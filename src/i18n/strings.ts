@@ -4,6 +4,7 @@ import { save } from '../core/save';
 const ru = {
   level: 'Уровень',
   swipe: 'Веди пальцем, чтобы бежать',
+  play: 'ИГРАТЬ',
   upgrades: 'Прокачка',
   skins: 'Скины',
   startUp: 'Старт',
@@ -46,6 +47,7 @@ type Dict = typeof ru;
 const en: Dict = {
   level: 'Level',
   swipe: 'Drag to run',
+  play: 'PLAY',
   upgrades: 'Upgrades',
   skins: 'Skins',
   startUp: 'Start',
@@ -87,6 +89,7 @@ const en: Dict = {
 const ky: Dict = {
   level: 'Деңгээл',
   swipe: 'Чуркоо үчүн манжаңды жылдыр',
+  play: 'ОЙНОО',
   upgrades: 'Күчөтүү',
   skins: 'Скиндер',
   startUp: 'Старт',

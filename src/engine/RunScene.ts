@@ -368,7 +368,10 @@ export class RunScene extends Phaser.Scene {
     });
     boost.pulse();
     if (!rewardedSupported()) boost.setVisible(false);
-    c.add([title, hand, hint, up, sk, boost]);
+    // a big obvious start button: some players never found "tap anywhere"
+    const play = new Button(this, W / 2, H - 250, { w: 440, h: 120, label: t('play'), fontSize: 52, color: COL.green, testId: 'play' }, () => this.startRun());
+    play.pulse();
+    c.add([title, hand, hint, up, sk, boost, play]);
     // idle: breathe, and a little hop every few seconds
     this.tweens.add({ targets: this.fx, sy: 1.04, sx: 0.98, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     this.time.addEvent({ delay: 2600, loop: true, callback: () => this.st === 'menu' && this.tweens.add({ targets: this.fx, jump: 60, duration: 180, yoyo: true, ease: 'Quad.Out' }) });
@@ -393,7 +396,7 @@ export class RunScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (this.topModal()) return;
       if (this.st === 'menu') {
-        if (p.y > H - 170 || p.y < 110) return;
+        if (p.y > H - 320 || p.y < 110) return; // bottom: menu buttons and PLAY
         this.startRun();
       }
       if (this.st === 'run') this.dragFrom = { x: p.x, hx: this.targetX };
