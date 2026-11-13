@@ -6,6 +6,7 @@ import { save } from '../core/save';
 import { currentGame } from '../games';
 import { getLang, LANG_NAMES, LANGS, setLang, t } from '../i18n/strings';
 import { platformMessage } from '../platform/bridge';
+import { PerfSampler, sendEvent } from '../platform/telemetry';
 import { interstitialAtPause, rewardedSupported, setPauseHandler, showRewarded } from '../services';
 import { COL, FONT, H, hex, W } from '../ui/theme';
 import { Button, label, modal, toast } from '../ui/widgets';
@@ -24,6 +25,7 @@ function layoutConsts() {
 }
 const RUN_SEQ = [0, 1, 2, 1];
 let gameReadySent = false;
+const perf = new PerfSampler(60);
 const D0 = 12; // metres at which scale = 0.5
 const HALF = 330; // road half-width in px at the hero
 const FAR = 120; // draw distance, m
@@ -277,6 +279,7 @@ export class RunScene extends Phaser.Scene {
         this.sparks.setParticleTint?.(up ? hex(this.cfg.palette.accent) : 0x888888);
         this.sparks.explode(30, this.hero.x, this.hero.y - 180);
         if (up) {
+          sendEvent('tier_reached', { tier: t, step_index: save.data.level });
           sfx.tierUp();
           haptic.medium();
           // transformation: jump + full spin + expanding ring
@@ -381,6 +384,8 @@ export class RunScene extends Phaser.Scene {
     sfx.whoosh();
     save.update((d) => d.plays++);
     platformMessage('gameplay_started');
+    platformMessage('level_started');
+    sendEvent('progression_started', { level_id: 'level', step_index: save.data.level, boosted: this.boosted, skin: save.data.skin });
     track('level_start', { level: save.data.level, boosted: this.boosted });
   }
 
@@ -409,6 +414,7 @@ export class RunScene extends Phaser.Scene {
   // ───────────── main loop ─────────────
   update(_t: number, dtMs: number) {
     if (this.paused) return;
+    if (this.st === 'run' || this.st === 'boss') perf.frame(dtMs);
     const dt = Math.min(0.05, dtMs / 1000);
     this.heroX += (this.targetX - this.heroX) * Math.min(1, dt * 12);
     let bob = 0;
@@ -610,6 +616,14 @@ export class RunScene extends Phaser.Scene {
     const tierName = this.cfg.tiers[this.tier][L];
     if (this.value > save.data.bestValue) save.update((d) => (d.bestValue = Math.round(this.value)));
     track(won ? 'level_win' : 'level_lose', { level: save.data.level, value: Math.round(this.value), boss: this.lvl.boss, mult });
+    perf.flush();
+    if (won) {
+      platformMessage('level_completed');
+      sendEvent('progression_completed', { level_id: 'level', step_index: save.data.level, mult, tier: this.tier, revived: this.revived });
+    } else {
+      platformMessage('level_failed');
+      sendEvent('progression_failed', { level_id: 'level', step_index: save.data.level, reason: 'boss', tier: this.tier, ratio: Math.round((this.value / this.lvl.boss) * 100) / 100 });
+    }
     const m = modal(this, 640, 820, won ? t('win') : t('lose'));
     const cx = W / 2;
     const top = H / 2 - 410;
@@ -648,6 +662,7 @@ export class RunScene extends Phaser.Scene {
         const ok = await showRewarded('revive');
         if (!ok) return void toast(this, t('noAd'));
         this.revived = true;
+        sendEvent('revive_used', { step_index: save.data.level });
         m.destroy();
         this.tweens.killTweensOf(this.hero);
         this.hero.setAngle(0).setY(BASE);
@@ -666,7 +681,6 @@ export class RunScene extends Phaser.Scene {
   }
 
   private async next() {
-    platformMessage(save.data.level > 1 ? 'level_completed' : 'level_failed');
     await interstitialAtPause('level_end');
     this.scene.restart();
   }
@@ -701,6 +715,7 @@ export class RunScene extends Phaser.Scene {
               d.up[r.id]++;
             });
             sfx.coin();
+            sendEvent('upgrade_purchased', { upgrade_id: r.id, level: lvl + 1, source: 'coins' });
             this.applyUpgradeNow();
             render();
           }),
@@ -791,6 +806,7 @@ export class RunScene extends Phaser.Scene {
 
   private async wearSkin(i: number) {
     save.update((d) => (d.skin = i));
+    sendEvent('skin_equipped', { skin: i, kind: this.cfg.skins[i].kind ?? 'human' });
     const jobs: Promise<void>[] = [];
     this.cfg.tiers.forEach((_, tt) => POSES.forEach((pose, f) => jobs.push(addSvgTexture(this, heroKey(tt, i, f), this.cfg.hero(tt, this.cfg.skins[i], pose), 300, 390))));
     await Promise.all(jobs);

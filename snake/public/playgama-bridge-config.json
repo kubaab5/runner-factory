@@ -1,0 +1,6 @@
+{
+    "advertisement": {
+        "interstitial": { "placements": [ { "id": "run_end" } ] },
+        "rewarded": { "placements": [ { "id": "revive" }, { "id": "start_big" }, { "id": "coins_x2" }, { "id": "skin" } ] }
+    }
+}

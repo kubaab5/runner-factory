@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Meme Snakes</title>
+    <link rel="icon" href="data:," />
+    
+  </head>
+  <body>
+    <canvas id="cv"></canvas>
+    <div id="boot">Meme Snakes</div>
+
+    <!-- in-game HUD -->
+    <div id="hud" class="hide">
+      <div id="score"><b id="len">0</b><span id="lenLbl">Length</span><div id="killsLine"></div></div>
+      <div id="board"><div id="boardT">Top snakes</div><ol id="boardL"></ol><div id="me"></div></div>
+      <canvas id="mini" width="220" height="220"></canvas>
+      <button id="boostBtn" class="hide">BOOST</button>
+      <div id="feed"></div>
+      <div id="pop"></div>
+      <div id="joy" class="hide"><div id="knob"></div></div>
+    </div>
+
+    <!-- menu -->
+    <div id="menu" class="screen hide">
+      <div class="logo"><span class="l1">MEME</span><span class="l2">SNAKES</span></div>
+      <div class="pick">
+        <button class="arrow" id="prevSkin" aria-label="previous skin">&#8249;</button>
+        <canvas id="prev" width="320" height="140"></canvas>
+        <button class="arrow" id="nextSkin" aria-label="next skin">&#8250;</button>
+      </div>
+      <div id="skinName" class="skinName"></div>
+      <input id="nick" maxlength="14" autocomplete="off" spellcheck="false" />
+      <button id="playBtn" class="big">PLAY</button>
+      <div class="row">
+        <button id="bigBtn" class="ad"><i class="adi"></i><span id="bigTxt">Start 3x longer</span></button>
+        <button id="shopBtn" class="sec"><span id="shopTxt">Skins</span></button>
+      </div>
+      <div class="stats"><span id="bestTxt"></span><span id="coinTxt" class="coin"></span></div>
+      <div id="hint" class="hint"></div>
+    </div>
+
+    <!-- shop -->
+    <div id="shop" class="screen hide">
+      <div class="shopTop">
+        <button id="shopBack" class="sec small">&#8249; <span id="backTxt">Back</span></button>
+        <div class="tabs"><button id="tabSkins" class="tab on">Snakes</button><button id="tabHats" class="tab">Accessories</button></div>
+        <div id="shopCoins" class="coin"></div>
+      </div>
+      <div id="grid"></div>
+      <div id="toast" class="toast hide"></div>
+    </div>
+
+    <!-- death -->
+    <div id="dead" class="screen hide">
+      <div class="card">
+        <div id="deadCause" class="cause"></div>
+        <div id="deadTitle" class="dtitle"></div>
+        <div id="deadBest" class="newbest hide"></div>
+        <div class="dstats">
+          <div><b id="dLen"></b><span id="dLenL"></span></div>
+          <div><b id="dKills"></b><span id="dKillsL"></span></div>
+          <div><b id="dRank"></b><span id="dRankL"></span></div>
+          <div><b id="dTime"></b><span id="dTimeL"></span></div>
+        </div>
+        <div class="earned"><span id="dEarnL"></span> <b id="dEarn" class="coin"></b></div>
+        <button id="reviveBtn" class="ad big2"><i class="adi"></i><span><span id="reviveTxt"></span><small id="reviveSub"></small></span></button>
+        <button id="x2Btn" class="ad"><i class="adi"></i><span id="x2Txt"></span></button>
+        <div class="row">
+          <button id="againBtn" class="big"></button>
+          <button id="menuBtn" class="sec"></button>
+        </div>
+        <div id="shareHint" class="hint"></div>
+      </div>
+    </div>
+
+    <button id="mute" aria-label="sound"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path id="muteWave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/><path id="muteX" d="M16 9l6 6M22 9l-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
