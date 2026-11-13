@@ -54,8 +54,8 @@
 | Aura Run | `cmwessots0pmglz0hytkb092l` | https://playgama.ai/play/2hemg24czxxuyt | aura-run-1.0.2 (кнопка PLAY) | runner |
 | Lucky Kick | `cmwexkek813abmr0h7wwiacjx` | https://playgama.ai/play/girhs72komfhob | lucky-kick-1.0.1 (пинок по тапу) | arcade |
 | Capy Spa | `cmwexr4ky0txilz0hibg3e1qh` | https://playgama.ai/play/ww3ctwspins5yg | capy-spa-1.0.0 | sudoku |
-| Meme Snakes | `cmwf44gr101phlk0heq0lsmwy` | https://playgama.ai/play/ji3crlgfd4qgfj | meme-snakes-1.0.1 (сохранения во время игры) | io |
-| Meme Merge | `cmwfaezrf06i0lk0hc14kyx69` | https://playgama.ai/play/oashrkroexhr2p | meme-merge-1.0.3 (сохранение банки, пауза с interstitial) | merge |
+| Meme Snakes | `cmwf44gr101phlk0heq0lsmwy` | https://playgama.ai/play/ji3crlgfd4qgfj | meme-snakes-1.0.2 (сохранения во время игры, вход) | io |
+| Meme Merge | `cmwfaezrf06i0lk0hc14kyx69` | https://playgama.ai/play/oashrkroexhr2p | meme-merge-1.0.4 (сохранение, пауза, вход, раскладка) | merge |
 
 - Lucky Kick и Capy Spa собираются под Playgama отдельной целью из своих репозиториев: `VITE_TARGET=playgama OUT_DIR=dist-playgama npx vite build`, затем zip папки. Обычная сборка (без переменной) — для Android, там всё по-прежнему: AdMob, localStorage, экран возраста.
 - Распространение на Google Play через Playgama у Lucky Kick и Capy Spa отключено (`excludedPlatforms: GOOGLE_PLAY`): эти игры выходят там под нашим аккаунтом.
@@ -104,11 +104,16 @@
   - Meme Snakes: монеты и лучшая длина откладываются во время забега (раз в 10 с, при скрытии страницы и pagehide), остаток зачисляется на экране смерти.
   - QA-шаг «Reward was granted despite the ad being closed before» на Meme Merge 1.0.1. Код и так даёт награду только по состоянию `rewarded`. Вероятная причина: режим молотка из прошлой награды оставался включённым, когда пользователь закрывал другую рекламу раньше времени. В 1.0.2 режим молотка сбрасывается при любой другой рекламе, новой игре и конце игры. При раннем закрытии игра пишет «Реклама закрыта раньше: без награды». Пользователя спросили, какую кнопку он нажимал.
   - QA-шаг 4 «Interstitial Ads» у Meme Merge не срабатывал: interstitial был только по «Ещё раз» после проигрыша, а до проигрыша долго. В 1.0.3 появилась кнопка паузы (справа сверху, на клавиатуре Esc или P) с пунктами «Продолжить» и «Новая игра». Открытие паузы — логическая пауза (правило 2.1.3), в этот момент вызывается interstitial. Повторный QA показал ту же находку про rewarded. По скриншоту видно: QA показывает своё окно рекламы с крестиком, и закрытие крестиком считается ранним закрытием.
+  - Первый полный QA Meme Merge 1.0.3 прошёл на 100%, осталось 2 замечания:
+    - «No sign-in option found». Вход по правилам не обязателен (1.2.1), но QA его ищет. В 1.0.4 (Merge) и 1.0.2 (Snakes) добавлен необязательный вход через `bridge.player.authorize()`. Кнопка видна, только если платформа поддерживает вход и игрок ещё не вошёл. Прогресс гостя сливается с сохранением аккаунта (максимумы, объединение скинов).
+    - «Raw AI graphics». Это общее предупреждение 4.3.1, у нас вся графика нарисована кодом.
+  - Попутно: убрана клавиша Esc (правило 1.5.2: Esc зарезервирован браузером), пауза осталась на P. В узком горизонтальном окне (как в QA на телефоне) кнопки наград и счёт стоят в своих полосах и не закрывают банку.
   - Правило на будущее: в каждой игре должна быть кнопка паузы (с interstitial) и быстрый способ вызвать rewarded, чтобы QA проходился за минуты.
+  - Правило на будущее: в каждой игре есть необязательный вход (если платформа поддерживает), клавиша Esc не используется.
   - Правило на будущее: каждая игра сохраняет прогресс во время игры, а не только в конце, иначе QA-шаг «Game Saves» не пройти.
 
 ## Следующие шаги
-1. **Пользователь:** пройти QA-проверку всех 5 игр по ссылкам (Aura Run …/qa-tool/cmwf61nr004qzlz0hxvt62ouq, Lucky Kick …/cmwf61o0403bmlk0hkksmhrgk, Capy Spa …/cmwexr7sl13kvmr0ha0kafe35, Meme Snakes …/cmwfaw6tp0adnlz0hkeusryfj, Meme Merge …/cmwfcdp5z0898lk0htdatej7s). Без неё форма заблокирована (NO_CERTIFICATION).
+1. **Пользователь:** пройти QA-проверку всех 5 игр по ссылкам (Aura Run …/qa-tool/cmwf61nr004qzlz0hxvt62ouq, Lucky Kick …/cmwf61o0403bmlk0hkksmhrgk, Capy Spa …/cmwexr7sl13kvmr0ha0kafe35, Meme Snakes …/cmwfcyjrb0cx5lz0hf4nyf998, Meme Merge …/cmwfcyj670cx2lz0htcyt4dx9). Без неё форма заблокирована (NO_CERTIFICATION).
 2. **16.11** кампании трафика закончатся (около 15:50 МСК). Посмотреть телеметрию, после этого пользователь отправляет игры на модерацию в каталог. Meme Snakes и Meme Merge можно отправлять, не дожидаясь.
 3. Ожидания по деньгам: в песочнице дохода почти нет, деньги после каталога. Вывод от $100. playgama.com — 50% разработчику, партнёрские сайты — 70/80/90%. Первая выплата — грубо через 1–3 месяца, зависит от трафика.
 4. Дальше выпускать игры с **новыми механиками** (идеи: раннер-викторина, толпа, которая растёт, Gym Rush со стенами, айдл-кликер, «нарисуй мост»). Для новых игр делать постеры для X.
