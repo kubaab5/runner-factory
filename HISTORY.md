@@ -55,7 +55,7 @@
 | Lucky Kick | `cmwexkek813abmr0h7wwiacjx` | https://playgama.ai/play/girhs72komfhob | lucky-kick-1.0.1 (пинок по тапу) | arcade |
 | Capy Spa | `cmwexr4ky0txilz0hibg3e1qh` | https://playgama.ai/play/ww3ctwspins5yg | capy-spa-1.0.0 | sudoku |
 | Meme Snakes | `cmwf44gr101phlk0heq0lsmwy` | https://playgama.ai/play/ji3crlgfd4qgfj | meme-snakes-1.0.1 (сохранения во время игры) | io |
-| Meme Merge | `cmwfaezrf06i0lk0hc14kyx69` | https://playgama.ai/play/oashrkroexhr2p | meme-merge-1.0.2 (сохранение банки, честный rewarded) | merge |
+| Meme Merge | `cmwfaezrf06i0lk0hc14kyx69` | https://playgama.ai/play/oashrkroexhr2p | meme-merge-1.0.3 (сохранение банки, пауза с interstitial) | merge |
 
 - Lucky Kick и Capy Spa собираются под Playgama отдельной целью из своих репозиториев: `VITE_TARGET=playgama OUT_DIR=dist-playgama npx vite build`, затем zip папки. Обычная сборка (без переменной) — для Android, там всё по-прежнему: AdMob, localStorage, экран возраста.
 - Распространение на Google Play через Playgama у Lucky Kick и Capy Spa отключено (`excludedPlatforms: GOOGLE_PLAY`): эти игры выходят там под нашим аккаунтом.
@@ -103,10 +103,12 @@
   - Meme Merge: рекорд, лучший мем и сама банка (мемы, очки, следующий мем) пишутся в Bridge storage после броска или слияния (не чаще раза в 5 с), а также при скрытии страницы, pagehide и перед рекламой. При запуске незаконченная игра продолжается.
   - Meme Snakes: монеты и лучшая длина откладываются во время забега (раз в 10 с, при скрытии страницы и pagehide), остаток зачисляется на экране смерти.
   - QA-шаг «Reward was granted despite the ad being closed before» на Meme Merge 1.0.1. Код и так даёт награду только по состоянию `rewarded`. Вероятная причина: режим молотка из прошлой награды оставался включённым, когда пользователь закрывал другую рекламу раньше времени. В 1.0.2 режим молотка сбрасывается при любой другой рекламе, новой игре и конце игры. При раннем закрытии игра пишет «Реклама закрыта раньше: без награды». Пользователя спросили, какую кнопку он нажимал.
+  - QA-шаг 4 «Interstitial Ads» у Meme Merge не срабатывал: interstitial был только по «Ещё раз» после проигрыша, а до проигрыша долго. В 1.0.3 появилась кнопка паузы (справа сверху, на клавиатуре Esc или P) с пунктами «Продолжить» и «Новая игра». Открытие паузы — логическая пауза (правило 2.1.3), в этот момент вызывается interstitial. Повторный QA показал ту же находку про rewarded. По скриншоту видно: QA показывает своё окно рекламы с крестиком, и закрытие крестиком считается ранним закрытием.
+  - Правило на будущее: в каждой игре должна быть кнопка паузы (с interstitial) и быстрый способ вызвать rewarded, чтобы QA проходился за минуты.
   - Правило на будущее: каждая игра сохраняет прогресс во время игры, а не только в конце, иначе QA-шаг «Game Saves» не пройти.
 
 ## Следующие шаги
-1. **Пользователь:** пройти QA-проверку всех 5 игр по ссылкам (Aura Run …/qa-tool/cmwf61nr004qzlz0hxvt62ouq, Lucky Kick …/cmwf61o0403bmlk0hkksmhrgk, Capy Spa …/cmwexr7sl13kvmr0ha0kafe35, Meme Snakes …/cmwfaw6tp0adnlz0hkeusryfj, Meme Merge …/cmwfc3a400844lk0hj6cg6932). Без неё форма заблокирована (NO_CERTIFICATION).
+1. **Пользователь:** пройти QA-проверку всех 5 игр по ссылкам (Aura Run …/qa-tool/cmwf61nr004qzlz0hxvt62ouq, Lucky Kick …/cmwf61o0403bmlk0hkksmhrgk, Capy Spa …/cmwexr7sl13kvmr0ha0kafe35, Meme Snakes …/cmwfaw6tp0adnlz0hkeusryfj, Meme Merge …/cmwfcdp5z0898lk0htdatej7s). Без неё форма заблокирована (NO_CERTIFICATION).
 2. **16.11** кампании трафика закончатся (около 15:50 МСК). Посмотреть телеметрию, после этого пользователь отправляет игры на модерацию в каталог. Meme Snakes и Meme Merge можно отправлять, не дожидаясь.
 3. Ожидания по деньгам: в песочнице дохода почти нет, деньги после каталога. Вывод от $100. playgama.com — 50% разработчику, партнёрские сайты — 70/80/90%. Первая выплата — грубо через 1–3 месяца, зависит от трафика.
 4. Дальше выпускать игры с **новыми механиками** (идеи: раннер-викторина, толпа, которая растёт, Gym Rush со стенами, айдл-кликер, «нарисуй мост»). Для новых игр делать постеры для X.
