@@ -54,8 +54,8 @@
 | Aura Run | `cmwessots0pmglz0hytkb092l` | https://playgama.ai/play/2hemg24czxxuyt | aura-run-1.0.2 (кнопка PLAY) | runner |
 | Lucky Kick | `cmwexkek813abmr0h7wwiacjx` | https://playgama.ai/play/girhs72komfhob | lucky-kick-1.0.1 (пинок по тапу) | arcade |
 | Capy Spa | `cmwexr4ky0txilz0hibg3e1qh` | https://playgama.ai/play/ww3ctwspins5yg | capy-spa-1.0.0 | sudoku |
-| Meme Snakes | `cmwf44gr101phlk0heq0lsmwy` | https://playgama.ai/play/ji3crlgfd4qgfj | meme-snakes-1.0.0 | io |
-| Meme Merge | `cmwfaezrf06i0lk0hc14kyx69` | https://playgama.ai/play/oashrkroexhr2p | meme-merge-1.0.0 | merge |
+| Meme Snakes | `cmwf44gr101phlk0heq0lsmwy` | https://playgama.ai/play/ji3crlgfd4qgfj | meme-snakes-1.0.1 (сохранения во время игры) | io |
+| Meme Merge | `cmwfaezrf06i0lk0hc14kyx69` | https://playgama.ai/play/oashrkroexhr2p | meme-merge-1.0.1 (банка восстанавливается) | merge |
 
 - Lucky Kick и Capy Spa собираются под Playgama отдельной целью из своих репозиториев: `VITE_TARGET=playgama OUT_DIR=dist-playgama npx vite build`, затем zip папки. Обычная сборка (без переменной) — для Android, там всё по-прежнему: AdMob, localStorage, экран возраста.
 - Распространение на Google Play через Playgama у Lucky Kick и Capy Spa отключено (`excludedPlatforms: GOOGLE_PLAY`): эти игры выходят там под нашим аккаунтом.
@@ -99,9 +99,13 @@
   - Aura Run 1.0.2: большая зелёная кнопка PLAY в меню, потому что часть игроков не начинала забег.
 - Перезалив в песочницу не сбивает кампанию трафика: ссылка та же, кампания продолжает идти.
 - Проверить ещё раз 14–16.11: доля «загрузились → начали» в Lucky Kick и Aura Run должна вырасти.
+- QA-проверка (Guided Certification), шаг «Game Saves»: Meme Merge 1.0.0 не прошла — после перезагрузки прогресс не восстанавливался, потому что сохранение было только в конце игры. Исправлено в 1.0.1 (опубликовано 21:20 МСК):
+  - Meme Merge: рекорд, лучший мем и сама банка (мемы, очки, следующий мем) пишутся в Bridge storage после броска или слияния (не чаще раза в 5 с), а также при скрытии страницы, pagehide и перед рекламой. При запуске незаконченная игра продолжается.
+  - Meme Snakes: монеты и лучшая длина откладываются во время забега (раз в 10 с, при скрытии страницы и pagehide), остаток зачисляется на экране смерти.
+  - Правило на будущее: каждая игра сохраняет прогресс во время игры, а не только в конце, иначе QA-шаг «Game Saves» не пройти.
 
 ## Следующие шаги
-1. **Пользователь:** пройти QA-проверку всех 5 игр по ссылкам (Aura Run …/qa-tool/cmwf61nr004qzlz0hxvt62ouq, Lucky Kick …/cmwf61o0403bmlk0hkksmhrgk, Capy Spa …/cmwexr7sl13kvmr0ha0kafe35, Meme Snakes …/cmwf44lkd02gslz0hrz2agp0h, Meme Merge …/cmwfaf1b309nwlz0h227stf3p). Без неё форма заблокирована (NO_CERTIFICATION).
+1. **Пользователь:** пройти QA-проверку всех 5 игр по ссылкам (Aura Run …/qa-tool/cmwf61nr004qzlz0hxvt62ouq, Lucky Kick …/cmwf61o0403bmlk0hkksmhrgk, Capy Spa …/cmwexr7sl13kvmr0ha0kafe35, Meme Snakes …/cmwfaw6tp0adnlz0hkeusryfj, Meme Merge …/cmwfaw63m0adklz0h1ehsx9de). Без неё форма заблокирована (NO_CERTIFICATION).
 2. **16.11** кампании трафика закончатся (около 15:50 МСК). Посмотреть телеметрию, после этого пользователь отправляет игры на модерацию в каталог. Meme Snakes и Meme Merge можно отправлять, не дожидаясь.
 3. Ожидания по деньгам: в песочнице дохода почти нет, деньги после каталога. Вывод от $100. playgama.com — 50% разработчику, партнёрские сайты — 70/80/90%. Первая выплата — грубо через 1–3 месяца, зависит от трафика.
 4. Дальше выпускать игры с **новыми механиками** (идеи: раннер-викторина, толпа, которая растёт, Gym Rush со стенами, айдл-кликер, «нарисуй мост»). Для новых игр делать постеры для X.
