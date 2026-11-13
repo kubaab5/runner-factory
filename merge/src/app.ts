@@ -11,7 +11,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 const STEP = 1 / 60;
 const COOLDOWN = 0.45;
 
-type State = 'play' | 'over';
+type State = 'play' | 'over' | 'paused';
 let state: State = 'play';
 let sim: Sim;
 let paused = false;
@@ -95,6 +95,7 @@ export async function startApp() {
   newGame(true);
   $('boot').classList.add('hide');
   $('hud').classList.remove('hide');
+  $('pauseBtn').classList.remove('hide');
   let last = performance.now();
   let acc = 0;
   let readySent = false;
@@ -189,6 +190,7 @@ function newGame(resume = false) {
   state = 'play';
   startedAt = sim.time;
   $('over').classList.add('hide');
+  $('pauseScr').classList.add('hide');
   $('hud').classList.remove('hide');
   updateHud();
   if (!run) {
@@ -379,6 +381,11 @@ function wireUi() {
     doDrop(toWorldX(e.clientX));
   });
   window.addEventListener('keydown', (e) => {
+    if (e.code === 'Escape' || e.code === 'KeyP') {
+      if (state === 'play') $('pauseBtn').click();
+      else if (state === 'paused') $('resumeBtn').click();
+      return;
+    }
     if (state !== 'play') return;
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') dropX -= 18;
     else if (e.code === 'ArrowRight' || e.code === 'KeyD') dropX += 18;
@@ -419,6 +426,40 @@ function wireUi() {
     sim.shake();
     shake = 16;
     play('whoosh', 0.7);
+  };
+  // pause menu: a logical pause, so it is also an interstitial moment (rule 2.1.3)
+  $('pauseBtn').onclick = () => {
+    if (state !== 'play') return;
+    cancelHammer();
+    persistProgress(true);
+    state = 'paused';
+    $('pauseT').textContent = t('paused');
+    $('resumeBtn').textContent = t('resume');
+    $('restartBtn').textContent = t('restart');
+    $('pauseScr').classList.remove('hide');
+    $('hud').classList.add('hide');
+    platformMessage('gameplay_stopped');
+    interstitialAtPause();
+  };
+  $('resumeBtn').onclick = () => {
+    if (state !== 'paused') return;
+    state = 'play';
+    $('pauseScr').classList.add('hide');
+    $('hud').classList.remove('hide');
+    platformMessage('gameplay_started');
+  };
+  $('restartBtn').onclick = () => {
+    if (state !== 'paused') return;
+    // the abandoned jar still counts for the best score
+    save.update((d) => {
+      d.best = Math.max(d.best, sim.score);
+      d.maxTier = Math.max(d.maxTier, sim.maxTier);
+      d.merges += sim.merges;
+      d.run = null;
+    });
+    sendEvent('progression_failed', { game: save.data.plays, score: sim.score, max_tier: sim.maxTier, merges: sim.merges, seconds: Math.round(sim.time - startedAt), revived: reviveUsed, cause: 'restart' });
+    $('pauseScr').classList.add('hide');
+    newGame();
   };
   $('reviveBtn').onclick = async () => {
     const b = $<HTMLButtonElement>('reviveBtn');

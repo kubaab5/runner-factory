@@ -13,7 +13,7 @@ canvas#cv { position: fixed; inset: 0; display: block; }
 button { font-family: inherit; font-weight: 900; border: 0; cursor: pointer; color: #fff; touch-action: manipulation; }
 button:active { transform: scale(0.95); }
 #hud { position: fixed; inset: 0; pointer-events: none; }
-#top { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 60px; right: 8px; display: flex; gap: 8px; justify-content: center; align-items: stretch; }
+#top { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 60px; right: 60px; display: flex; gap: 8px; justify-content: center; align-items: stretch; }
 .box { background: rgba(20, 10, 45, 0.55); border-radius: 14px; padding: 4px 12px; min-width: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .box span { font-size: 12px; opacity: 0.75; }
 .box b { font-size: clamp(20px, 4.4vmin, 28px); font-weight: 900; line-height: 1.05; }
@@ -65,3 +65,7 @@ button:active { transform: scale(0.95); }
   .dtitle { font-size: 24px; }
   .big2, .big { padding: 8px; font-size: 18px; }
 }
+
+#pauseBtn { position: fixed; right: 10px; top: max(10px, env(safe-area-inset-top)); width: 42px; height: 42px; border-radius: 50%; background: rgba(20, 10, 45, 0.6); color: #fff; padding: 9px; z-index: 5; }
+#pauseBtn svg { width: 100%; height: 100%; }
+.sec2 { width: 100%; padding: 11px; border-radius: 16px; font-size: 19px; background: #4a3590; box-shadow: 0 5px 0 #2c1f5a; }
