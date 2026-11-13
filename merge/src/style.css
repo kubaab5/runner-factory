@@ -54,10 +54,17 @@ button:active { transform: scale(0.95); }
 #mute.off #muteX { display: inline; }
 #mute.off #muteWave { display: none; }
 @media (max-height: 559px) and (min-aspect-ratio: 6/5) {
-  #top { left: 8px; right: auto; top: 60px; flex-direction: column; }
-  .box { min-width: 84px; }
-  #tools { left: auto; right: max(10px, env(safe-area-inset-right)); bottom: auto; top: 50%; transform: translateY(-50%); flex-direction: column; }
-  #banner { top: 12%; }
+  #top { left: 8px; right: auto; top: 58px; flex-direction: column; gap: 5px; }
+  .box { min-width: 84px; padding: 2px 8px; border-radius: 10px; }
+  .box span { font-size: 10px; }
+  .box b { font-size: 18px; }
+  #nextCv { width: 30px; height: 30px; }
+  /* tools become icon buttons in their own lane on the right */
+  #tools { left: auto; right: max(8px, env(safe-area-inset-right)); bottom: auto; top: 50%; transform: translateY(-50%); flex-direction: column; gap: 8px; }
+  .tool { padding: 8px 9px; gap: 4px; }
+  .tool { font-size: 12px; max-width: 128px; }
+  .tool svg { width: 18px; height: 18px; }
+  #banner { top: 8%; font-size: 14px; max-width: 46vw; padding: 7px 12px; }
 }
 @media (max-height: 520px) {
   .card { gap: 4px; padding: 10px; }

@@ -158,8 +158,11 @@ function resize() {
   const botUi = side ? 8 : 64;
   const worldW = JAR_W + 40;
   const worldH = JAR_H + 120 + 74;
-  scale = Math.min((W - 16) / worldW, (H - topUi - botUi) / worldH);
-  ox = (W - JAR_W * scale) / 2;
+  // in the side layout the HUD column (left) and the tool buttons (right) get their own lanes
+  const leftUi = side ? 100 : 8;
+  const rightUi = side ? 140 : 8;
+  scale = Math.min((W - leftUi - rightUi) / worldW, (H - topUi - botUi) / worldH);
+  ox = leftUi + (W - leftUi - rightUi - JAR_W * scale) / 2;
   oy = topUi + (H - topUi - botUi - worldH * scale) / 2 + 120 * scale;
 }
 
