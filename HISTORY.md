@@ -51,8 +51,8 @@
 ## Playgama: все игры (обновлено 13.11.2026)
 | Игра | id в Playgama | Песочница | Последний архив | Категория |
 |---|---|---|---|---|
-| Aura Run | `cmwessots0pmglz0hytkb092l` | https://playgama.ai/play/2hemg24czxxuyt | aura-run-1.0.1 (добавлена телеметрия) | runner |
-| Lucky Kick | `cmwexkek813abmr0h7wwiacjx` | https://playgama.ai/play/girhs72komfhob | lucky-kick-1.0.0 | arcade |
+| Aura Run | `cmwessots0pmglz0hytkb092l` | https://playgama.ai/play/2hemg24czxxuyt | aura-run-1.0.2 (кнопка PLAY) | runner |
+| Lucky Kick | `cmwexkek813abmr0h7wwiacjx` | https://playgama.ai/play/girhs72komfhob | lucky-kick-1.0.1 (пинок по тапу) | arcade |
 | Capy Spa | `cmwexr4ky0txilz0hibg3e1qh` | https://playgama.ai/play/ww3ctwspins5yg | capy-spa-1.0.0 | sudoku |
 | Meme Snakes | `cmwf44gr101phlk0heq0lsmwy` | https://playgama.ai/play/ji3crlgfd4qgfj | meme-snakes-1.0.0 | io |
 
@@ -76,6 +76,18 @@
 - Сборка: `cd snake && npm run build`, получается `snake/meme-snakes.zip`.
 - **Playgama:** id `cmwf44gr101phlk0heq0lsmwy`, архив `meme-snakes-1.0.0` (`cmwf44lkd02gslz0hrz2agp0h`), проверка PASSED, Bridge 2.4.2, категория io, EN и RU. **Опубликована в песочнице 13.11.2026:** https://playgama.ai/play/ji3crlgfd4qgfj. Бесплатного трафика больше нет (лимит 3 игры), продвигаем постами.
 - Превью без звука: https://claude.ai/artifact/R4V56L2P43bbzxj3kvxQgF (сборка `PREVIEW=1 npx vite build`, без Bridge).
+
+## Первая статистика и правки (13.11.2026, вечер)
+- Данные за первые часы, кампании потратили 1–3% бюджета. Часть сессий может быть нашей.
+  - Aura Run: 14 игроков, 8 начали забег, 35 забегов, медиана сессии 15 с, максимум 9 мин.
+  - Lucky Kick: у 8 игра загрузилась, только 3 пнули блок. Кто начал — сыграл 20 раз и сам посмотрел 3 rewarded.
+  - Capy Spa: 8 игроков, 6 начали, медиана 45 с, из 12 уровней пройдено 6.
+  - Interstitial в песочнице почти не заполняется (Aura: 3 открытия на 29 попыток), rewarded работает. Это сторона Playgama, не наш код.
+- Правки, опубликованы в песочнице в 19:04 МСК:
+  - Lucky Kick 1.0.1: простой тап тоже пинает (угол −40°, 80% силы), подсказка первого удара крупнее — дуга полёта, «резинка», свечение блока, строка «или просто тапни!».
+  - Aura Run 1.0.2: большая зелёная кнопка PLAY в меню, потому что часть игроков не начинала забег.
+- Перезалив в песочницу не сбивает кампанию трафика: ссылка та же, кампания продолжает идти.
+- Проверить ещё раз 14–16.11: доля «загрузились → начали» в Lucky Kick и Aura Run должна вырасти.
 
 ## Следующие шаги
 1. Трафик всех трёх игр идёт до 16.11. После этого посмотреть статистику (телеметрия Playgama) и цели песочницы. При желании добавить второй пост.
