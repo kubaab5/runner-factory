@@ -54,6 +54,7 @@
 | Aura Run | `cmwessots0pmglz0hytkb092l` | https://playgama.ai/play/2hemg24czxxuyt | aura-run-1.0.1 (добавлена телеметрия) | runner |
 | Lucky Kick | `cmwexkek813abmr0h7wwiacjx` | https://playgama.ai/play/girhs72komfhob | lucky-kick-1.0.0 | arcade |
 | Capy Spa | `cmwexr4ky0txilz0hibg3e1qh` | https://playgama.ai/play/ww3ctwspins5yg | capy-spa-1.0.0 | sudoku |
+| Meme Snakes | `cmwf44gr101phlk0heq0lsmwy` | https://playgama.ai/play/ji3crlgfd4qgfj | meme-snakes-1.0.0 | io |
 
 - Lucky Kick и Capy Spa собираются под Playgama отдельной целью из своих репозиториев: `VITE_TARGET=playgama OUT_DIR=dist-playgama npx vite build`, затем zip папки. Обычная сборка (без переменной) — для Android, там всё по-прежнему: AdMob, localStorage, экран возраста.
 - Распространение на Google Play через Playgama у Lucky Kick и Capy Spa отключено (`excludedPlatforms: GOOGLE_PLAY`): эти игры выходят там под нашим аккаунтом.
@@ -73,7 +74,8 @@
 - Тесты: `snake/tests/sim.test.ts` (3 минуты ботов, стена, рост и ускорение). `SURVIVAL=1 npx vitest run tests/survive.test.ts` меряет выживание: игрок под управлением мозга бота живёт в среднем около 65 с.
 - Скриншоты: `node scripts/shots.mjs /tmp/shots` (телефон, ПК, квадрат, альбомная). Обложки и постер: запустить `npx vite --port 5199`, потом `node scripts/covers.mjs store`.
 - Сборка: `cd snake && npm run build`, получается `snake/meme-snakes.zip`.
-- Playgama: пока **не опубликована**, потому что коннектор Playgama отключился (502). План: create_application → загрузить архив и обложки из `snake/store` → форма (название «Meme Snakes», категория io, языки EN и RU) → publish_sandbox. Бесплатного трафика больше нет (лимит 3 игры).
+- **Playgama:** id `cmwf44gr101phlk0heq0lsmwy`, архив `meme-snakes-1.0.0` (`cmwf44lkd02gslz0hrz2agp0h`), проверка PASSED, Bridge 2.4.2, категория io, EN и RU. **Опубликована в песочнице 13.11.2026:** https://playgama.ai/play/ji3crlgfd4qgfj. Бесплатного трафика больше нет (лимит 3 игры), продвигаем постами.
+- Превью без звука: https://claude.ai/artifact/R4V56L2P43bbzxj3kvxQgF (сборка `PREVIEW=1 npx vite build`, без Bridge).
 
 ## Следующие шаги
 1. Трафик всех трёх игр идёт до 16.11. После этого посмотреть статистику (телеметрия Playgama) и цели песочницы. При желании добавить второй пост.

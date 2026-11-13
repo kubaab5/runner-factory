@@ -6,3 +6,4 @@ e2e/out/
 *.log
 *.zip
 snake/node_modules
+snake/dist-preview/
