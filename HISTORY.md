@@ -55,6 +55,7 @@
 | Lucky Kick | `cmwexkek813abmr0h7wwiacjx` | https://playgama.ai/play/girhs72komfhob | lucky-kick-1.0.1 (пинок по тапу) | arcade |
 | Capy Spa | `cmwexr4ky0txilz0hibg3e1qh` | https://playgama.ai/play/ww3ctwspins5yg | capy-spa-1.0.0 | sudoku |
 | Meme Snakes | `cmwf44gr101phlk0heq0lsmwy` | https://playgama.ai/play/ji3crlgfd4qgfj | meme-snakes-1.0.0 | io |
+| Meme Merge | `cmwfaezrf06i0lk0hc14kyx69` | https://playgama.ai/play/oashrkroexhr2p | meme-merge-1.0.0 | merge |
 
 - Lucky Kick и Capy Spa собираются под Playgama отдельной целью из своих репозиториев: `VITE_TARGET=playgama OUT_DIR=dist-playgama npx vite build`, затем zip папки. Обычная сборка (без переменной) — для Android, там всё по-прежнему: AdMob, localStorage, экран возраста.
 - Распространение на Google Play через Playgama у Lucky Kick и Capy Spa отключено (`excludedPlatforms: GOOGLE_PLAY`): эти игры выходят там под нашим аккаунтом.
@@ -76,6 +77,16 @@
 - Сборка: `cd snake && npm run build`, получается `snake/meme-snakes.zip`.
 - **Playgama:** id `cmwf44gr101phlk0heq0lsmwy`, архив `meme-snakes-1.0.0` (`cmwf44lkd02gslz0hrz2agp0h`), проверка PASSED, Bridge 2.4.2, категория io, EN и RU. **Опубликована в песочнице 13.11.2026:** https://playgama.ai/play/ji3crlgfd4qgfj. Бесплатного трафика больше нет (лимит 3 игры), продвигаем постами.
 - Превью без звука: https://claude.ai/artifact/R4V56L2P43bbzxj3kvxQgF (сборка `PREVIEW=1 npx vite build`, без Bridge).
+
+## Meme Merge (13.11.2026, вечер) — мердж в банке в духе Suika, папка `merge/`
+- Пользователь сказал «Любое делай, что считаешь нужным». Выбран мердж: жанр с долгими сессиями, и механика отличается от всех наших игр (правило 4.2.2).
+- Движок: Canvas2D + matter-js (физика кругов). Логика в `merge/src/game/sim.ts`: банка 420×600, 11 ступеней, пунктирная линия опасности (если мем выше неё 2 с, игра окончена), очки за слияние и комбо, «два босса» дают +500.
+- Цепочка мемов: Crumb → NPC → Bean → Donut → Cookie → Pizza → Cool Guy → Rizz → Sigma → Aura → Final Boss (с короной). Лица живые: глаза следят за точкой сброса, моргают, у банки пугаются и потеют, после слияния улыбаются. Всё нарисовано кодом, без чужих IP.
+- Rewarded: «Очистить верх» (один раз за игру, убирает мелочь из верхней части банки), «Разбить» (молоток по любому мему), «Встряхнуть». Interstitial — по «Ещё раз».
+- Экран конца: звание по самому большому мему («Rizz Lord», «Sigma Grindset», «FINAL BOSS»), крупный портрет мема — для скриншотов. Внизу цепочка: открытые мемы цветные, остальные «?».
+- Звук: Kenney Match-3 (tile-match, tile-land, tile-swap) и Junkala «Title Screen». EN и RU. Bridge storage: рекорд, лучший мем, флаг обучения.
+- Тесты `merge/tests/sim.test.ts`: случайная игра доходит до 6–8 ступени примерно за 130 бросков и заканчивается. Скриншоты: `node scripts/shots.mjs /tmp/mshots` (нужен `npx vite preview --port 4182`). Обложки: `npx vite --port 5198`, потом `node scripts/covers.mjs store`.
+- Playgama: id `cmwfaezrf06i0lk0hc14kyx69`, архив `meme-merge-1.0.0` (`cmwfaf1b309nwlz0h227stf3p`), проверка PASSED, категория merge. **Песочница:** https://playgama.ai/play/oashrkroexhr2p. QA: https://developer.playgama.com/qa-tool/cmwfaf1b309nwlz0h227stf3p
 
 ## Первая статистика и правки (13.11.2026, вечер)
 - Данные за первые часы, кампании потратили 1–3% бюджета. Часть сессий может быть нашей.
