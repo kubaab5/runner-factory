@@ -1,0 +1,22 @@
+{
+  "name": "meme-merge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && cd dist && rm -f ../meme-merge.zip && zip -qr ../meme-merge.zip .",
+    "preview": "vite preview --port 4182",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fontsource/nunito": "^5.3.0",
+    "@playgama/bridge": "^2.4.2"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0",
+    "@playwright/test": "^1.65.0"
+  }
+}

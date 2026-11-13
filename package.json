@@ -18,6 +18,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",
+    "@types/matter-js": "^0.20.2",
+    "matter-js": "^0.20.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"

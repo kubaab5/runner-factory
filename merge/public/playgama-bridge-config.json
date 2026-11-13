@@ -1,0 +1,6 @@
+{
+    "advertisement": {
+        "interstitial": { "placements": [ { "id": "game_over" } ] },
+        "rewarded": { "placements": [ { "id": "revive" }, { "id": "hammer" }, { "id": "shake" } ] }
+    }
+}
