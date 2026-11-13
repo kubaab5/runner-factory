@@ -13,7 +13,11 @@ const buffers = new Map<string, AudioBuffer>();
 const lastPlay = new Map<string, number>();
 const flags = { platform: true, paused: false, hidden: false, suspended: false };
 
+/** single-file builds embed the sounds as data URIs (see scripts/single.mjs) */
+const embedded = (window as unknown as { __AUDIO?: Record<string, string> }).__AUDIO;
+
 const ext = () => {
+  if (embedded) return 'mp3';
   const a = document.createElement('audio');
   return a.canPlayType('audio/ogg; codecs="vorbis"') ? 'ogg' : 'mp3';
 };
@@ -31,7 +35,7 @@ export async function initAudio() {
   await Promise.all(
     [...NAMES, 'music'].map(async (n) => {
       try {
-        const res = await fetch(`audio/${n}.${e}`);
+        const res = await fetch(embedded?.[`${n}.${e}`] ?? `audio/${n}.${e}`);
         const buf = await ctx!.decodeAudioData(await res.arrayBuffer());
         buffers.set(n, buf);
       } catch {

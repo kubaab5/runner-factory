@@ -26,7 +26,7 @@ let overAt = 0;
 let lastLand = 0;
 let shake = 0;
 let flash = 0;
-let tutorial = !save.data.tutorial;
+let tutorial = false;
 const happyUntil = new Map<number, number>();
 let lastSaveAt = 0;
 let bestAtStart = 0;
@@ -86,6 +86,7 @@ interface Floater {
 let floats: Floater[] = [];
 
 export async function startApp() {
+  tutorial = !save.data.tutorial; // read here, after the save is loaded (the module may be evaluated earlier)
   g = cv().getContext('2d')!;
   resize();
   window.addEventListener('resize', resize);
