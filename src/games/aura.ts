@@ -20,7 +20,7 @@ const T = (s: Partial<Parameters<typeof humanSvg>[0]>, shirt: string) =>
 
 export const aura: GameConfig = {
   id: 'aura',
-  title: { ru: 'Аура Ран', en: 'Aura Run', ky: 'Аура Ран' },
+  title: { ru: 'Aura Run', en: 'Aura Run', ky: 'Aura Run' },
   tagline: { ru: 'Набери ауру — уделай главного NPC!', en: 'Farm aura — beat the Main NPC!', ky: 'Аура чогулт — башкы NPCни жең!' },
   unit: { ru: 'ауры', en: 'aura', ky: 'аура' },
   start: 100,
@@ -35,29 +35,30 @@ export const aura: GameConfig = {
     { ru: 'Легенда ауры', en: 'Aura Legend', ky: 'Аура легендасы' },
     { ru: 'Бог ауры', en: 'Aura God', ky: 'Аура кудайы' },
   ],
-  hero: (tier, shirt) => {
+  hero: (tier, skin, pose) => {
+    const k = { kind: skin.kind, pose, skin: skin.kind ? '#F6EBD9' : SKIN, pants: skin.kind ? '#3A4A6B' : '#3A4A6B' };
     switch (tier) {
       case 0:
-        return T({ face: 'meh', shoulder: 34, waist: 30, arm: 13 }, '#9AA4B2');
+        return T({ ...k, face: 'meh', shoulder: 34, waist: 30, arm: 13 }, skin.kind ? skin.color : '#9AA4B2');
       case 1:
-        return T({ face: 'smile' }, shirt);
+        return T({ ...k, face: 'smile' }, skin.color);
       case 2:
-        return T({ face: 'smile', glow: { color: '#C9A7FF', r: 90, a: 0.55 } }, shirt);
+        return T({ ...k, face: 'smile', glow: { color: '#C9A7FF', r: 90, a: 0.55 } }, skin.color);
       case 3:
-        return T({ face: 'smug', shades: true, glow: { color: '#B88CFF', r: 100, a: 0.75 } }, shirt);
+        return T({ ...k, face: 'smug', shades: true, glow: { color: '#B88CFF', r: 100, a: 0.75 } }, skin.color);
       case 4:
-        return T({ face: 'smug', shades: true, glow: { color: '#FFD23F', r: 100, a: 0.85 }, crown: true }, shirt);
+        return T({ ...k, face: 'smug', shades: true, glow: { color: '#FFD23F', r: 100, a: 0.85 }, crown: true }, skin.color);
       default:
-        return T({ face: 'smug', shades: true, glow: { color: '#FFF4A3', r: 100, a: 1 }, halo: true, crown: false, flex: true }, shirt);
+        return T({ ...k, face: 'smug', shades: true, glow: { color: '#FFF4A3', r: 100, a: 1 }, halo: true, flex: !skin.kind }, skin.color);
     }
   },
   skins: [
     { name: { ru: 'Худи', en: 'Hoodie', ky: 'Худи' }, color: '#FF6B6B', price: 0 },
     { name: { ru: 'Мята', en: 'Mint', ky: 'Жалбыз' }, color: '#3ED6A0', price: 150 },
-    { name: { ru: 'Небо', en: 'Sky', ky: 'Асман' }, color: '#4DA3FF', price: 300 },
-    { name: { ru: 'Лаванда', en: 'Lavender', ky: 'Лаванда' }, color: '#B88CFF', price: 500 },
-    { name: { ru: 'Закат', en: 'Sunset', ky: 'Күн батыш' }, color: '#FF9F1C', price: 800 },
-    { name: { ru: 'Чёрный', en: 'Black', ky: 'Кара' }, color: '#2D2D3A', price: 1200 },
+    { name: { ru: 'Банан', en: 'Banana', ky: 'Банан' }, color: '#FFD84D', price: 400, kind: 'banana' },
+    { name: { ru: 'Огурчик', en: 'Pickle', ky: 'Бадыраң' }, color: '#7CC04B', price: 700, kind: 'pickle' },
+    { name: { ru: 'Пельмень', en: 'Dumpling', ky: 'Чүчпара' }, color: '#F6EBD9', price: 1000, kind: 'dumpling' },
+    { name: { ru: 'Тост', en: 'Toast', ky: 'Тост' }, color: '#F4D59B', price: 1500, kind: 'toast' },
   ],
   pickup: { svg: sparkle, n: 10 },
   hazard: { svg: cringe, n: 50 },
@@ -76,5 +77,6 @@ export const aura: GameConfig = {
     en: ['−1000 aura. The NPC won', 'Cringe. Try again', 'Aura went negative'],
     ky: ['−1000 аура. NPC жеңди', 'Кринж. Дагы аракет кыл', 'Аура минуска кетти'],
   },
+  music: 'music1',
   emoji: '✨',
 };

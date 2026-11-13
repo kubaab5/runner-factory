@@ -1,4 +1,13 @@
+import type { HeroKind } from '../art/hero';
+
 export type Lang = 'ru' | 'en' | 'ky';
+export interface Skin {
+  name: L10n;
+  color: string;
+  price: number;
+  /** absurd body: banana, pickle… (default human) */
+  kind?: HeroKind;
+}
 export type L10n = Record<Lang, string>;
 
 export type OpKind = '+' | '-' | 'x' | '/';
@@ -34,9 +43,9 @@ export interface GameConfig {
   /** value thresholds where the hero changes look; tiers.length === thresholds.length */
   thresholds: number[];
   tiers: L10n[];
-  /** hero SVG for a tier (0..tiers-1) and a skin colour; drawn in a 200×260 box, feet at the bottom centre */
-  hero: (tier: number, skin: string) => string;
-  skins: { name: L10n; color: string; price: number }[];
+  /** hero SVG for a tier (0..tiers-1), a skin and a run-cycle pose (-1, 0, 1); 200×260 box, feet at the bottom centre */
+  hero: (tier: number, skin: Skin, pose: number) => string;
+  skins: Skin[];
   /** small +item on the road and −item hazard; SVGs in a 100×100 box */
   pickup: { svg: string; n: number };
   hazard: { svg: string; n: number };
@@ -46,6 +55,8 @@ export interface GameConfig {
   /** shown on the win screen for the hero's tier (index = tier) */
   winLines: Record<Lang, string[]>;
   loseLines: Record<Lang, string[]>;
-  /** emoji used in floaters / share text */
+  /** emoji used in share text */
   emoji: string;
+  /** background music file in public/audio (without extension) */
+  music: string;
 }

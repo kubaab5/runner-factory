@@ -130,18 +130,19 @@ const DICTS: Record<Lang, Dict> = { ru, en, ky };
 export const LANGS: Lang[] = ['ru', 'en', 'ky'];
 export const LANG_NAMES: Record<Lang, string> = { ru: 'Русский', en: 'English', ky: 'Кыргызча' };
 
-let lang: Lang = 'ru';
-export function detectLang(hint?: string): Lang {
+let lang: Lang = 'en';
+/** The language comes only from the platform (rule 3.4.2); English is the default and fallback (3.4.1). */
+export function detectLang(platformLang?: string): Lang {
   const saved = save.data.settings.lang;
   if (saved) return saved;
-  const l = (hint || navigator.language || 'ru').slice(0, 2).toLowerCase();
-  return l === 'ky' ? 'ky' : l === 'ru' || l === 'uk' || l === 'be' || l === 'kk' ? 'ru' : 'en';
+  const l = (platformLang || 'en').slice(0, 2).toLowerCase();
+  return l === 'ru' ? 'ru' : l === 'ky' ? 'ky' : 'en';
 }
 export const setLang = (l: Lang) => (lang = l);
 export const getLang = () => lang;
 
 export function t(key: keyof Dict, vars: Record<string, string | number> = {}): string {
-  let s = DICTS[lang][key] ?? ru[key];
+  let s = DICTS[lang][key] ?? en[key];
   for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
   return s;
 }

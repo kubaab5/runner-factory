@@ -35,7 +35,7 @@ describe.each(Object.values(GAMES))('level generator: $id', (cfg) => {
   });
 
   it('every tier and skin renders an SVG', () => {
-    for (let t = 0; t < cfg.tiers.length; t++) for (const s of cfg.skins) expect(cfg.hero(t, s.color)).toMatch(/^<svg[\s\S]*<\/svg>$/);
+    for (let t = 0; t < cfg.tiers.length; t++) for (const s of cfg.skins) expect(cfg.hero(t, s, 0)).toMatch(/^<svg[\s\S]*<\/svg>$/);
   });
 });
 

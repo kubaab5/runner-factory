@@ -24,4 +24,6 @@ export function addSvgTexture(scene: Phaser.Scene, key: string, svg: string, w: 
   });
 }
 
-export const heroKey = (tier: number, skin: number) => `hero_${tier}_${skin}`;
+export const heroKey = (tier: number, skin: number, frame = 1) => `hero_${tier}_${skin}_${frame}`;
+/** run-cycle poses for frames 0,1,2 (played 0,1,2,1) */
+export const POSES = [-1, 0, 1];

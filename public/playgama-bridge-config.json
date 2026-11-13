@@ -1,0 +1,18 @@
+{
+    "advertisement": {
+        "interstitial": {
+            "placements": [
+                { "id": "level_end" }
+            ]
+        },
+        "rewarded": {
+            "placements": [
+                { "id": "coins_x3" },
+                { "id": "revive" },
+                { "id": "start_boost" },
+                { "id": "skin" },
+                { "id": "free_upgrade" }
+            ]
+        }
+    }
+}

@@ -1,23 +1,29 @@
 import Phaser from 'phaser';
-import { sfx } from '../audio/sfx';
+import { music, refreshMute, sfx } from '../audio/sfx';
 import { track } from '../core/analytics';
 import { haptic } from '../core/platform';
 import { save } from '../core/save';
 import { currentGame } from '../games';
 import { getLang, LANG_NAMES, LANGS, setLang, t } from '../i18n/strings';
-import { adsConfig, maybeInterstitial, platformMessage, refreshBanner, setPauseHandler, showRewarded, vipMinutesLeft, watchForVip } from '../services';
-import { shareResult } from '../ui/share';
+import { platformMessage } from '../platform/bridge';
+import { interstitialAtPause, rewardedSupported, setPauseHandler, showRewarded } from '../services';
 import { COL, FONT, H, hex, W } from '../ui/theme';
 import { Button, label, modal, toast } from '../ui/widgets';
 import { applyOp, Entity, finishMultiplier, formatValue, generateLevel, incomeMult, isGood, Level, levelReward, opLabel, startBonus, tierOf, upgradeCost } from './level';
-import { addSvgTexture, heroKey } from './textures';
+import { addSvgTexture, heroKey, POSES } from './textures';
 import type { GameConfig, Op } from './types';
 
 type State = 'menu' | 'run' | 'boss' | 'end';
 
 // Pseudo-3D projection: scale falls off with distance ahead of the hero.
-const HOR = 380; // horizon y
-const BASE = 1050; // hero feet y
+let HOR = 380; // horizon y — follows the real game height
+let BASE = 1050; // hero feet y
+function layoutConsts() {
+  HOR = Math.round(H * 0.3);
+  BASE = H - 230;
+}
+const RUN_SEQ = [0, 1, 2, 1];
+let gameReadySent = false;
 const D0 = 12; // metres at which scale = 0.5
 const HALF = 330; // road half-width in px at the hero
 const FAR = 120; // draw distance, m
@@ -51,6 +57,16 @@ export class RunScene extends Phaser.Scene {
   private paused = false;
   private bossLane = 0;
   private bossFlying = false;
+  private revived = false;
+  private bossHop = 0;
+  private runT = 0;
+  private runFrame = 1;
+  private heroBase = 1;
+  private fx = { sx: 1, sy: 1, jump: 0, spin: 0 };
+  private dust!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private confetti!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private backdrop?: Phaser.GameObjects.Graphics;
+  private muteBtn!: Button;
 
   private road!: Phaser.GameObjects.Graphics;
   private hero!: Phaser.GameObjects.Image;
@@ -76,6 +92,9 @@ export class RunScene extends Phaser.Scene {
     this.boosted = false;
     this.bossLane = 0;
     this.bossFlying = false;
+    this.revived = false;
+    this.fx = { sx: 1, sy: 1, jump: 0, spin: 0 };
+    layoutConsts();
     const d = save.data;
     this.lvl = generateLevel(this.cfg, d.level, this.cfg.start + startBonus(d.up.start, this.cfg));
     this.value = this.cfg.start + startBonus(d.up.start, this.cfg);
@@ -88,9 +107,11 @@ export class RunScene extends Phaser.Scene {
     this.boss = this.add.image(W / 2, sy(this.lvl.length + 10), 'boss').setOrigin(0.5, 1).setDepth(5);
     this.bossLabel = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '44px', fontStyle: '900', color: '#ffffff', stroke: '#B00020', strokeThickness: 10, align: 'center' }).setOrigin(0.5).setDepth(5000);
 
-    this.hero = this.add.image(W / 2, BASE, heroKey(this.tier, d.skin)).setOrigin(0.5, 1).setDepth(4000);
+    this.hero = this.add.image(W / 2, BASE, heroKey(this.tier, d.skin, 1)).setOrigin(0.5, 1).setDepth(4000);
     this.heroLabel = this.add.text(W / 2, BASE - 330, '', { fontFamily: FONT, fontSize: '46px', fontStyle: '900', color: '#ffffff', stroke: this.cfg.palette.ink, strokeThickness: 10 }).setOrigin(0.5).setDepth(5000);
     this.sparks = this.add.particles(0, 0, 'dot', { speed: { min: 120, max: 420 }, lifespan: 650, gravityY: 600, scale: { start: 1.1, end: 0 }, emitting: false }).setDepth(4500);
+    this.dust = this.add.particles(0, 0, 'dot', { speed: { min: 20, max: 90 }, angle: { min: 200, max: 340 }, lifespan: 380, scale: { start: 1.3, end: 0 }, alpha: { start: 0.5, end: 0 }, tint: 0xffffff, emitting: false }).setDepth(3990);
+    this.confetti = this.add.particles(0, 0, 'chip', { speed: { min: 250, max: 650 }, angle: { min: 230, max: 310 }, rotate: { min: 0, max: 360 }, lifespan: 1800, gravityY: 700, scale: { start: 1.2, end: 0.8 }, tint: { onEmit: () => Phaser.Utils.Array.GetRandom([0xff4f6d, 0xffd23f, 0x3ed6a0, 0x4da3ff, 0xb88cff]) }, emitting: false }).setDepth(6100);
 
     this.drawHud();
     this.layoutWorld();
@@ -98,26 +119,41 @@ export class RunScene extends Phaser.Scene {
     this.showMenu();
     this.setupInput();
     setPauseHandler((p) => (this.paused = p));
+    music.start('music');
+    // first playable frame is on screen → let the platform hide its loading screen (Bridge required step 6)
+    if (!gameReadySent) {
+      gameReadySent = true;
+      this.time.delayedCall(0, () => platformMessage('game_ready'));
+    }
+    const relayout = () => {
+      layoutConsts();
+      if (this.st === 'menu') this.scene.restart();
+      else this.drawBackdrop();
+    };
+    this.game.events.on('layout', relayout);
+    this.events.once('shutdown', () => this.game.events.off('layout', relayout));
     (window as unknown as { __rf: unknown }).__rf = this.testApi();
   }
 
   // ───────────── scenery ─────────────
   private drawBackdrop() {
     const p = this.cfg.palette;
+    this.backdrop?.destroy();
     const g = this.add.graphics().setDepth(0);
+    this.backdrop = g;
     g.fillGradientStyle(hex(p.skyTop), hex(p.skyTop), hex(p.skyBottom), hex(p.skyBottom), 1).fillRect(0, 0, W, HOR);
     g.fillStyle(hex(p.ground), 1).fillRect(0, HOR, W, H - HOR);
     // sky dressing: stars on dark skies, clouds on light ones
     const dark = Phaser.Display.Color.IntegerToColor(hex(p.skyTop)).v < 0.5;
-    for (let i = 0; i < (dark ? 40 : 6); i++) {
+    for (let i = 0; i < (dark ? Math.round(W / 18) : Math.ceil(W / 120)); i++) {
       const x = (i * 173) % W;
-      const y = dark ? 140 + ((i * 97) % (HOR - 160)) : 170 + ((i * 61) % 150);
+      const y = dark ? 140 + ((i * 97) % Math.max(40, HOR - 160)) : 170 + ((i * 61) % Math.max(40, HOR - 230));
       if (dark) g.fillStyle(0xffffff, 0.35 + ((i * 37) % 60) / 100).fillCircle(x, y, 1.5 + (i % 3));
       else g.fillStyle(0xffffff, 0.85).fillEllipse(x, y, 150, 44).fillEllipse(x + 40, y - 16, 90, 48).fillEllipse(x - 42, y - 6, 80, 38);
     }
     // soft hills on the horizon
     g.fillStyle(Phaser.Display.Color.IntegerToColor(hex(p.ground)).darken(12).color, 1);
-    for (let i = 0; i < 6; i++) g.fillEllipse(i * 150 + 40, HOR + 4, 260, 70);
+    for (let i = 0; i < Math.ceil(W / 150) + 1; i++) g.fillEllipse(i * 150 + 40, HOR + 4, 260, 70);
   }
 
   private drawRoad() {
@@ -215,12 +251,16 @@ export class RunScene extends Phaser.Scene {
       const lane = l.e.kind === 'gates' ? 0 : l.e.x;
       l.obj.setVisible(l.obj.active).setPosition(sx(lane, d), sy(d)).setScale(s * l.baseScale).setDepth(1000 - d);
       if (l.e.kind === 'gates') l.obj.setAlpha(d < 0 ? Math.max(0, 1 + d / 2) : 1);
+      if (l.e.kind === 'pickup') {
+        const ph = this.time.now / 260 + l.e.z;
+        l.obj.setY(sy(d) - Math.abs(Math.sin(ph)) * 28 * s).setAngle(Math.sin(ph * 0.7) * 14);
+      }
       if (l.e.kind === 'decor' && d < -2) l.obj.setVisible(false);
     }
     this.lives = this.lives.filter((l) => l.obj.active);
     const bd = this.lvl.length + 10 - this.z;
     const bs = proj(Math.max(bd, 0.5));
-    if (!this.bossFlying) this.boss.setPosition(sx(this.bossLane, Math.max(bd, 0.5)), sy(Math.max(bd, 0.5))).setScale(bs * 1.15).setDepth(1000 - bd).setVisible(bd < FAR);
+    if (!this.bossFlying) this.boss.setPosition(sx(this.bossLane, Math.max(bd, 0.5)), sy(Math.max(bd, 0.5)) - this.bossHop).setScale(bs * 1.15).setDepth(1000 - bd).setVisible(bd < FAR);
     this.bossLabel.setPosition(this.boss.x, this.boss.y - 520 * bs * 1.15 - 30).setVisible(bd < 70 && !this.bossFlying).setScale(Math.min(1, 0.5 + bs));
     if (this.st !== 'boss') this.bossLabel.setText(`${this.cfg.boss.name[getLang()]}\n${formatValue(this.lvl.boss)}`);
     this.drawRoad();
@@ -232,24 +272,37 @@ export class RunScene extends Phaser.Scene {
     if (t !== this.tier) {
       const up = t > this.tier;
       this.tier = t;
-      this.hero.setTexture(heroKey(t, save.data.skin));
+      this.hero.setTexture(heroKey(t, save.data.skin, this.runFrame));
       if (!instant) {
         this.sparks.setParticleTint?.(up ? hex(this.cfg.palette.accent) : 0x888888);
-        this.sparks.explode(26, this.hero.x, this.hero.y - 180);
+        this.sparks.explode(30, this.hero.x, this.hero.y - 180);
         if (up) {
           sfx.tierUp();
           haptic.medium();
-          const tt = label(this, W / 2, 330, t === 0 ? '' : this.cfg.tiers[t][getLang()] + '!', 64, '#ffffff', '900').setStroke(this.cfg.palette.ink, 12).setDepth(6000).setScale(0.3);
+          // transformation: jump + full spin + expanding ring
+          this.tweens.add({ targets: this.fx, jump: 120, duration: 220, yoyo: true, ease: 'Quad.Out' });
+          this.tweens.add({ targets: this.fx, spin: 360, duration: 440, ease: 'Cubic.InOut', onComplete: () => (this.fx.spin = 0) });
+          const ring = this.add.circle(this.hero.x, this.hero.y - 170, 40).setStrokeStyle(10, hex(this.cfg.palette.accent)).setDepth(3980);
+          this.tweens.add({ targets: ring, radius: 260, alpha: 0, duration: 520, onComplete: () => ring.destroy() });
+          this.cameras.main.zoomTo(1.05, 120, 'Sine.easeOut', true);
+          this.time.delayedCall(160, () => this.cameras.main.zoomTo(1, 260, 'Sine.easeInOut', true));
+          const tt = label(this, W / 2, HOR - 60, this.cfg.tiers[t][getLang()] + '!', 64, '#ffffff', '900').setStroke(this.cfg.palette.ink, 12).setDepth(6000).setScale(0.3);
           this.tweens.add({ targets: tt, scale: 1, duration: 260, ease: 'Back.Out' });
-          this.tweens.add({ targets: tt, alpha: 0, y: 290, delay: 900, duration: 400, onComplete: () => tt.destroy() });
+          this.tweens.add({ targets: tt, alpha: 0, y: HOR - 100, delay: 900, duration: 400, onComplete: () => tt.destroy() });
         }
       }
     }
     const within = this.cfg.thresholds[t + 1] ? (this.value - this.cfg.thresholds[t]) / (this.cfg.thresholds[t + 1] - this.cfg.thresholds[t]) : 0.5;
     const target = 0.82 + t * 0.05 + Math.min(1, Math.max(0, within)) * 0.05;
-    if (instant) this.hero.setScale(target);
-    else this.tweens.add({ targets: this.hero, scale: target, duration: 200, ease: 'Back.Out' });
+    if (instant) this.heroBase = target;
+    else this.tweens.add({ targets: this, heroBase: target, duration: 200, ease: 'Back.Out' });
     this.heroLabel.setText(`${formatValue(this.value)}`);
+  }
+
+  /** squash & stretch impulse that eases back to 1 every frame */
+  private squash(sx: number, sy: number) {
+    this.fx.sx = sx;
+    this.fx.sy = sy;
   }
 
   private floater(text: string, color: string, x: number, y: number) {
@@ -266,6 +319,13 @@ export class RunScene extends Phaser.Scene {
     top.add([pill, this.add.image(66, 61, 'coin').setDisplaySize(52, 52), this.coinText, lv]);
     const gear = new Button(this, W - 66, 61, { w: 88, h: 76, label: '', icon: 'i_gear', iconSize: 46, color: 0x000000, testId: 'settings' }, () => this.settings());
     gear.setAlpha(0.85).setDepth(7000);
+    // mute button (rule 3.3.3)
+    this.muteBtn = new Button(this, W - 166, 61, { w: 88, h: 76, label: '', icon: save.data.settings.sound ? 'i_soundOn' : 'i_soundOff', iconSize: 46, color: 0x000000, testId: 'mute' }, () => {
+      save.update((d) => (d.settings.sound = !d.settings.sound));
+      refreshMute();
+      this.muteBtn.setIcon(save.data.settings.sound ? 'i_soundOn' : 'i_soundOff');
+    });
+    this.muteBtn.setAlpha(0.85).setDepth(7000);
     this.progress = this.add.graphics().setDepth(7000);
     this.refreshCoins();
   }
@@ -285,15 +345,15 @@ export class RunScene extends Phaser.Scene {
 
   private showMenu() {
     const c = this.add.container(0, 0).setDepth(6500);
-    const title = label(this, W / 2, 205, this.cfg.title[getLang()], 72, '#ffffff', '900').setStroke(this.cfg.palette.ink, 14);
+    const title = label(this, W / 2, Math.max(190, HOR - 170), this.cfg.title[getLang()], 72, '#ffffff', '900').setStroke(this.cfg.palette.ink, 14);
     const hand = this.add.image(W / 2 + 60, BASE - 60, 'i_hand').setDisplaySize(110, 110);
     this.tweens.add({ targets: hand, x: W / 2 - 60, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-    const hint = label(this, W / 2, 300, t('swipe'), 34, '#ffffff', '900').setStroke(this.cfg.palette.ink, 8);
+    const hint = label(this, W / 2, Math.max(285, HOR - 75), t('swipe'), 34, '#ffffff', '900').setStroke(this.cfg.palette.ink, 8);
     this.tweens.add({ targets: hint, scale: 1.06, duration: 600, yoyo: true, repeat: -1 });
-    const y = 1180;
-    const up = new Button(this, 130, y, { w: 220, h: 100, label: t('upgrades'), fontSize: 28, color: 0xffffff, textColor: COL.inkCss, testId: 'upgrades' }, () => this.upgrades());
-    const sk = new Button(this, 360, y, { w: 210, h: 100, label: t('skins'), fontSize: 28, color: 0xffffff, textColor: COL.inkCss, testId: 'skins' }, () => this.skins());
-    const boost = new Button(this, 590, y, { w: 230, h: 100, label: t('startBoost'), fontSize: 28, color: COL.ad, testId: 'boost' }, async () => {
+    const y = H - 100;
+    const up = new Button(this, W / 2 - 230, y, { w: 220, h: 100, label: t('upgrades'), fontSize: 28, color: 0xffffff, textColor: COL.inkCss, testId: 'upgrades' }, () => this.upgrades());
+    const sk = new Button(this, W / 2, y, { w: 210, h: 100, label: t('skins'), fontSize: 28, color: 0xffffff, textColor: COL.inkCss, testId: 'skins' }, () => this.skins());
+    const boost = new Button(this, W / 2 + 230, y, { w: 230, h: 100, label: t('startBoost'), fontSize: 28, color: COL.ad, testId: 'boost' }, async () => {
       if (this.boosted) return;
       const ok = await showRewarded('start_boost');
       if (!ok) return void toast(this, t('noAd'));
@@ -304,7 +364,11 @@ export class RunScene extends Phaser.Scene {
       toast(this, t('boostOn'), 400, '#FFE66D');
     });
     boost.pulse();
+    if (!rewardedSupported()) boost.setVisible(false);
     c.add([title, hand, hint, up, sk, boost]);
+    // idle: breathe, and a little hop every few seconds
+    this.tweens.add({ targets: this.fx, sy: 1.04, sx: 0.98, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+    this.time.addEvent({ delay: 2600, loop: true, callback: () => this.st === 'menu' && this.tweens.add({ targets: this.fx, jump: 60, duration: 180, yoyo: true, ease: 'Quad.Out' }) });
     this.menuUi = c;
   }
 
@@ -312,6 +376,9 @@ export class RunScene extends Phaser.Scene {
     if (this.st !== 'menu') return;
     this.st = 'run';
     this.menuUi.destroy();
+    this.tweens.killTweensOf(this.fx);
+    this.fx = { sx: 1, sy: 1, jump: 0, spin: 0 };
+    sfx.whoosh();
     save.update((d) => d.plays++);
     platformMessage('gameplay_started');
     track('level_start', { level: save.data.level, boosted: this.boosted });
@@ -321,7 +388,7 @@ export class RunScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       if (this.topModal()) return;
       if (this.st === 'menu') {
-        if (p.y > 1110 || p.y < 110) return;
+        if (p.y > H - 170 || p.y < 110) return;
         this.startRun();
       }
       if (this.st === 'run') this.dragFrom = { x: p.x, hx: this.targetX };
@@ -343,11 +410,35 @@ export class RunScene extends Phaser.Scene {
   update(_t: number, dtMs: number) {
     if (this.paused) return;
     const dt = Math.min(0.05, dtMs / 1000);
-    // idle bob
-    const bob = Math.sin(this.time.now / 90) * (this.st === 'run' ? 6 : 2);
     this.heroX += (this.targetX - this.heroX) * Math.min(1, dt * 12);
-    this.hero.setPosition(sx(this.heroX, 0), BASE + (this.st === 'run' ? Math.abs(bob) * -1 : 0));
-    this.hero.setAngle(this.st === 'run' ? (this.targetX - this.heroX) * 18 : 0);
+    let bob = 0;
+    if (this.st === 'run') {
+      // run cycle: 4 steps per cycle, faster when running faster
+      this.runT += dt * (this.speed / 15) * 3.4;
+      const step = Math.floor(this.runT * 4) % 4;
+      const f = RUN_SEQ[step];
+      if (f !== this.runFrame) {
+        this.runFrame = f;
+        this.hero.setTexture(heroKey(this.tier, save.data.skin, f));
+        if (f !== 1) {
+          this.squash(1.06, 0.93);
+          this.dust.explode(4, this.hero.x + (f === 0 ? -20 : 20), this.hero.y);
+          sfx.step(f);
+        }
+      }
+      bob = Math.abs(Math.sin(this.runT * Math.PI * 2)) * 12;
+    } else if (this.runFrame !== 1 && this.st !== 'end') {
+      this.runFrame = 1;
+      this.hero.setTexture(heroKey(this.tier, save.data.skin, 1));
+    }
+    // ease squash back to 1
+    this.fx.sx += (1 - this.fx.sx) * Math.min(1, dt * 10);
+    this.fx.sy += (1 - this.fx.sy) * Math.min(1, dt * 10);
+    if (this.st !== 'end') {
+      this.hero.setPosition(sx(this.heroX, 0), BASE - bob - this.fx.jump);
+      this.hero.setScale(this.heroBase * this.fx.sx, this.heroBase * this.fx.sy);
+      this.hero.setAngle((this.st === 'run' ? (this.targetX - this.heroX) * 18 : 0) + this.fx.spin);
+    }
     this.heroLabel.setPosition(this.hero.x, this.hero.y - 390 * this.hero.scaleY - 20);
     if (this.st === 'run') {
       const prevZ = this.z;
@@ -376,7 +467,16 @@ export class RunScene extends Phaser.Scene {
         const good = this.value >= before;
         good ? sfx.gateGood() : sfx.gateBad();
         good ? haptic.light() : haptic.error();
-        if (!good) this.cameras.main.shake(160, 0.008);
+        if (good) {
+          this.squash(1.22, 1.22);
+          this.sparks.setParticleTint?.(COL.good);
+          this.sparks.explode(18, this.hero.x, this.hero.y - 150);
+        } else {
+          this.cameras.main.shake(160, 0.008);
+          this.squash(1.3, 0.7);
+          this.hero.setTintFill(0xff4f6d);
+          this.time.delayedCall(110, () => this.hero.clearTint());
+        }
         this.floater(opLabel(op), good ? '#7CFFB2' : '#FF8FA3', this.hero.x, this.hero.y - 300);
         // pop the gate that was hit
         const c = l.obj as Phaser.GameObjects.Container;
@@ -397,10 +497,14 @@ export class RunScene extends Phaser.Scene {
       } else if (e.kind === 'hazard') {
         if (Math.abs(this.heroX - e.x) > 0.38) continue;
         this.value = Math.max(1, this.value - e.n);
-        sfx.gateBad();
         haptic.error();
         this.cameras.main.shake(200, 0.01);
         this.cameras.main.flash(120, 255, 60, 60);
+        // dizzy spin + stars
+        this.tweens.add({ targets: this.fx, spin: -360, duration: 420, ease: 'Cubic.Out', onComplete: () => (this.fx.spin = 0) });
+        this.sparks.setParticleTint?.(0xffe66d);
+        this.sparks.explode(12, this.hero.x, this.hero.y - 300);
+        sfx.hit();
         this.floater(`−${formatValue(e.n)}`, '#FF8FA3', this.hero.x, this.hero.y - 260);
         this.combo = 0;
         this.updateHero();
@@ -434,7 +538,10 @@ export class RunScene extends Phaser.Scene {
           haptic.medium();
           this.cameras.main.shake(90, 0.012);
           const heroTurn = hits % 2 === 1;
-          this.tweens.add({ targets: heroTurn ? this.hero : this.boss, y: (heroTurn ? this.hero : this.boss).y - 30, duration: 70, yoyo: true });
+          if (heroTurn) {
+            this.tweens.add({ targets: this.fx, jump: 34, duration: 70, yoyo: true });
+            this.squash(1.15, 0.88);
+          } else this.tweens.add({ targets: this, bossHop: 30, duration: 70, yoyo: true });
           this.sparks.setParticleTint?.(0xffffff);
           this.sparks.explode(10, W / 2 + 20, sy(3.2) - 200);
           const k = hits / n;
@@ -451,19 +558,27 @@ export class RunScene extends Phaser.Scene {
   }
 
   private win(v: number, b: number) {
+    this.st = 'end';
     const mult = finishMultiplier(v, b);
+    // victory dance: three hops and a flip, confetti from both sides
+    this.hero.setTexture(heroKey(this.tier, save.data.skin, 1));
+    this.tweens.add({ targets: this.hero, y: this.hero.y - 70, duration: 200, yoyo: true, repeat: 2, ease: 'Quad.Out' });
+    this.tweens.add({ targets: this.hero, angle: 360, delay: 400, duration: 420, ease: 'Cubic.InOut' });
+    this.confetti.explode(40, 60, H * 0.55);
+    this.confetti.explode(40, W - 60, H * 0.55);
     sfx.win();
     haptic.success();
     // boss is launched onto the multiplier ladder
     this.bossFlying = true;
     const LX = W - 150;
     this.boss.setDepth(4100);
-    this.tweens.add({ targets: this.boss, x: LX, y: 1000 - mult * 66 + 20, angle: 720, scale: 0.16, duration: 450 + mult * 110, ease: 'Cubic.Out' });
+    const ladderBase = BASE - 40;
+    this.tweens.add({ targets: this.boss, x: LX, y: ladderBase - mult * 66 + 20, angle: 720, scale: 0.16, duration: 450 + mult * 110, ease: 'Cubic.Out' });
     this.bossLabel.setVisible(false);
     this.heroLabel.setText(formatValue(v));
     const ladder = this.add.container(W - 150, 0).setDepth(3900);
     for (let i = 1; i <= 10; i++) {
-      const y = 1000 - i * 66;
+      const y = ladderBase - i * 66;
       const g = this.add.graphics();
       const on = i <= mult;
       const c = Phaser.Display.Color.HSVToRGB(0.33 - (i / 10) * 0.33, 0.75, 0.95).color;
@@ -472,7 +587,7 @@ export class RunScene extends Phaser.Scene {
       g.setAlpha(0);
       tx.setAlpha(0);
       ladder.add([g, tx]);
-      this.tweens.add({ targets: [g, tx], alpha: 1, delay: 300 + i * (on ? 110 : 20), duration: 120, onStart: () => on && sfx.mark() });
+      this.tweens.add({ targets: [g, tx], alpha: 1, delay: 300 + i * (on ? 110 : 20), duration: 120, onStart: () => on && sfx.mark(i) });
     }
     this.time.delayedCall(450 + mult * 110 + 400, () => {
       ladder.destroy();
@@ -481,6 +596,8 @@ export class RunScene extends Phaser.Scene {
   }
 
   private lose() {
+    this.st = 'end';
+    this.hero.setTexture(heroKey(this.tier, save.data.skin, 1));
     sfx.fail();
     haptic.error();
     this.tweens.add({ targets: this.hero, y: this.hero.y + 40, angle: -80, duration: 500, ease: 'Bounce.Out' });
@@ -500,8 +617,9 @@ export class RunScene extends Phaser.Scene {
     const line = won ? lines[Math.min(this.tier, lines.length - 1)] : lines[Math.floor(Math.random() * lines.length)];
     m.add(label(this, cx, top + 140, line, 32, COL.inkCss, '800').setWordWrapWidth(560));
     m.add(label(this, cx, top + 200, `${t('youAre', { t: tierName })} · ${formatValue(this.value)} ${this.cfg.unit[L]}`, 26, '#4E6580', '800').setWordWrapWidth(580));
-    const img = this.add.image(cx, top + 470, heroKey(this.tier, save.data.skin)).setOrigin(0.5, 1).setScale(0.62);
+    const img = this.add.image(cx, top + 470, heroKey(this.tier, save.data.skin, 1)).setOrigin(0.5, 1).setScale(0.62);
     m.add(img);
+    this.tweens.add({ targets: img, scaleY: 0.66, scaleX: 0.6, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     if (won) {
       const reward = Math.round(levelReward(save.data.level) * mult * incomeMult(save.data.up.income));
       const rt = label(this, cx, top + 530, `+${formatValue(reward)}`, 56, '#D4A017', '900');
@@ -515,48 +633,42 @@ export class RunScene extends Phaser.Scene {
         m.destroy();
         void this.next();
       };
-      m.add(new Button(this, cx - 150, top + 640, { w: 270, h: 96, label: t('x3'), color: COL.ad, fontSize: 34, testId: 'x3' }, async () => {
-        const ok = await showRewarded('coins_x3');
-        if (!ok) return void toast(this, t('noAd'));
-        finish(3);
-      }).pulse());
-      m.add(new Button(this, cx + 150, top + 640, { w: 270, h: 96, label: t('claim'), color: COL.green, fontSize: 34, testId: 'claim' }, () => finish(1)));
+      const rw = rewardedSupported();
+      if (rw)
+        m.add(new Button(this, cx - 150, top + 660, { w: 270, h: 96, label: t('x3'), color: COL.ad, fontSize: 34, testId: 'x3' }, async () => {
+          const ok = await showRewarded('coins_x3');
+          if (!ok) return void toast(this, t('noAd'));
+          finish(3);
+        }).pulse());
+      m.add(new Button(this, rw ? cx + 150 : cx, top + 660, { w: 270, h: 96, label: t('claim'), color: COL.green, fontSize: 34, testId: 'claim' }, () => finish(1)));
     } else {
-      m.add(new Button(this, cx, top + 560, { w: 420, h: 100, label: t('revive'), color: COL.ad, fontSize: 36, testId: 'revive' }, async () => {
+      // a revive at most once per attempt (rule 2.2.4)
+      if (rewardedSupported() && !this.revived)
+        m.add(new Button(this, cx, top + 580, { w: 420, h: 100, label: t('revive'), color: COL.ad, fontSize: 36, testId: 'revive' }, async () => {
         const ok = await showRewarded('revive');
         if (!ok) return void toast(this, t('noAd'));
+        this.revived = true;
         m.destroy();
+        this.tweens.killTweensOf(this.hero);
         this.hero.setAngle(0).setY(BASE);
+        this.st = 'boss';
         this.value = Math.round(this.lvl.boss * 1.3);
         this.updateHero();
         this.z = this.lvl.length + 4;
         this.startBoss();
       }).pulse());
-      m.add(new Button(this, cx, top + 670, { w: 300, h: 84, label: t('retry'), color: 0xffffff, textColor: COL.inkCss, fontSize: 30, testId: 'retry' }, () => {
+      m.add(new Button(this, cx, top + 700, { w: 300, h: 84, label: t('retry'), color: 0xffffff, textColor: COL.inkCss, fontSize: 30, testId: 'retry' }, () => {
         m.destroy();
         void this.next();
       }));
     }
-    m.add(new Button(this, cx, top + 760, { w: 330, h: 70, label: t('share'), icon: 'i_share', iconSize: 30, fontSize: 26, color: 0xffffff, textColor: COL.inkCss, testId: 'share' }, () => void shareResult(this, this.cfg, this.tier, Math.round(this.value))));
     this.refreshCoins();
   }
 
   private async next() {
-    await maybeInterstitial('level_end', () => this.adBumper());
-    refreshBanner();
+    platformMessage(save.data.level > 1 ? 'level_completed' : 'level_failed');
+    await interstitialAtPause('level_end');
     this.scene.restart();
-  }
-
-  private adBumper(): Promise<void> {
-    return new Promise((resolve) => {
-      const c = this.add.container(0, 0).setDepth(9000);
-      c.add(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.75));
-      c.add(label(this, W / 2, H / 2, t('adBreak'), 40, '#ffffff', '900'));
-      this.time.delayedCall(1200, () => {
-        resolve();
-        this.time.delayedCall(200, () => c.destroy());
-      });
-    });
   }
 
   // ───────────── shop ─────────────
@@ -596,7 +708,8 @@ export class RunScene extends Phaser.Scene {
       });
       const left = FREE_UPGRADE_MS - (Date.now() - save.data.freeUpgradeAt);
       const ready = left <= 0;
-      content.add(
+      if (rewardedSupported())
+        content.add(
         new Button(this, cx, top + 560, { w: 480, h: 92, label: ready ? `${t('startUp')} +1 · ${t('free')}` : t('freeIn', { m: Math.ceil(left / 60000) }), color: COL.ad, fontSize: 30, disabled: !ready, testId: 'free-upgrade' }, async () => {
           const ok = await showRewarded('free_upgrade');
           if (!ok) return void toast(this, t('noAd'));
@@ -625,7 +738,7 @@ export class RunScene extends Phaser.Scene {
   private async skins() {
     const cfg = this.cfg;
     const showTier = Math.min(3, cfg.tiers.length - 1);
-    await Promise.all(cfg.skins.map((s, i) => addSvgTexture(this, heroKey(showTier, i), cfg.hero(showTier, s.color), 300, 390)));
+    await Promise.all(cfg.skins.map((s, i) => addSvgTexture(this, heroKey(showTier, i, 1), cfg.hero(showTier, s, 0), 300, 390)));
     const m = modal(this, 660, 1000, t('skins'));
     const cx = W / 2;
     const top = H / 2 - 500;
@@ -644,9 +757,9 @@ export class RunScene extends Phaser.Scene {
         g.fillStyle(worn ? hex(cfg.palette.accent) : 0xeef3f8, worn ? 0.35 : 1).fillRoundedRect(x - 90, y - 150, 180, 300, 22);
         if (worn) g.lineStyle(6, hex(cfg.palette.accent), 1).strokeRoundedRect(x - 90, y - 150, 180, 300, 22);
         grid.add(g);
-        grid.add(this.add.image(x, y + 40, heroKey(showTier, i)).setOrigin(0.5, 1).setScale(0.44).setAlpha(owned ? 1 : 0.55));
+        grid.add(this.add.image(x, y + 40, heroKey(showTier, i, 1)).setOrigin(0.5, 1).setScale(0.44).setAlpha(owned ? 1 : 0.55));
         grid.add(label(this, x, y + 66, s.name[L], 22, COL.inkCss, '900'));
-        const isNextFree = !owned && i === nextLocked();
+        const isNextFree = !owned && i === nextLocked() && rewardedSupported();
         const btnLabel = worn ? t('equipped') : owned ? t('equip') : isNextFree ? t('free') : `${s.price}`;
         const b = new Button(this, x, y + 116, { w: 164, h: 58, label: btnLabel, icon: !owned && !isNextFree ? 'coin' : undefined, iconSize: 30, fontSize: 22, color: owned ? COL.green : isNextFree ? COL.ad : hex(cfg.palette.accent), disabled: worn, testId: `skin-${i}` }, async () => {
           if (owned) {
@@ -678,20 +791,26 @@ export class RunScene extends Phaser.Scene {
 
   private async wearSkin(i: number) {
     save.update((d) => (d.skin = i));
-    await Promise.all(this.cfg.tiers.map((_, tt) => addSvgTexture(this, heroKey(tt, i), this.cfg.hero(tt, this.cfg.skins[i].color), 300, 390)));
-    this.hero.setTexture(heroKey(this.tier, i));
+    const jobs: Promise<void>[] = [];
+    this.cfg.tiers.forEach((_, tt) => POSES.forEach((pose, f) => jobs.push(addSvgTexture(this, heroKey(tt, i, f), this.cfg.hero(tt, this.cfg.skins[i], pose), 300, 390))));
+    await Promise.all(jobs);
+    this.hero.setTexture(heroKey(this.tier, i, this.runFrame));
+    this.squash(1.25, 1.25);
+    sfx.tierUp();
   }
 
   private settings() {
-    const m = modal(this, 600, 820, t('settings'));
+    const m = modal(this, 600, 700, t('settings'));
     const cx = W / 2;
-    const top = H / 2 - 410;
+    const top = H / 2 - 350;
     (['sound', 'haptics'] as const).forEach((key, i) => {
       const y = top + 170 + i * 110;
       m.add(label(this, cx - 120, y, key === 'sound' ? t('sound') : t('vibration'), 32));
       m.add(
         new Button(this, cx + 150, y, { w: 170, h: 80, label: save.data.settings[key] ? t('on') : t('off'), color: save.data.settings[key] ? COL.green : 0xbcb2a6, fontSize: 30 }, () => {
           save.update((d) => (d.settings[key] = !d.settings[key]));
+          refreshMute();
+          this.muteBtn.setIcon(save.data.settings.sound ? 'i_soundOn' : 'i_soundOff');
           m.destroy();
           this.settings();
         }),
@@ -707,18 +826,7 @@ export class RunScene extends Phaser.Scene {
         }),
       );
     });
-    const left = vipMinutesLeft();
-    const vc = adsConfig().vip_pass;
-    m.add(
-      new Button(this, cx, top + 610, { w: 520, h: 88, label: left > 0 ? t('vipActive', { m: left }) : t('vip', { a: save.data.vipProgress, b: vc.rewarded_needed }), color: COL.ad, fontSize: 26, testId: 'vip' }, async () => {
-        if (vipMinutesLeft() > 0) return;
-        const r = await watchForVip();
-        if (r === 'fail') toast(this, t('noAd'));
-        m.destroy();
-        this.settings();
-      }),
-    );
-    m.add(new Button(this, cx, top + 740, { w: 280, h: 76, label: t('close'), color: 0xffffff, textColor: COL.inkCss, fontSize: 28, testId: 'close' }, () => m.destroy()));
+    m.add(new Button(this, cx, top + 620, { w: 280, h: 76, label: t('close'), color: 0xffffff, textColor: COL.inkCss, fontSize: 28, testId: 'close' }, () => m.destroy()));
   }
 
   // ───────────── test hooks ─────────────

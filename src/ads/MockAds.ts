@@ -4,7 +4,6 @@ import { track } from '../core/analytics';
 /** Dev / web stand-in: grey overlay with a 3-second countdown. Never pays out. */
 export class MockAds implements AdService {
   readonly name = 'mock';
-  private banner: HTMLDivElement | null = null;
   /** set window.__mockAdsFail = true to simulate no fill */
   private get failing() {
     return Boolean((window as unknown as { __mockAdsFail?: boolean }).__mockAdsFail);
@@ -71,32 +70,7 @@ export class MockAds implements AdService {
     return true;
   }
 
-  async ShowBanner() {
-    if (this.banner) {
-      this.banner.style.display = 'flex';
-      return;
-    }
-    const b = document.createElement('div');
-    b.setAttribute('data-testid', 'mock-banner');
-    b.textContent = 'TEST BANNER 320×50';
-    b.style.cssText =
-      'position:fixed;left:0;right:0;bottom:0;height:50px;background:#ddd;color:#555;display:flex;align-items:center;justify-content:center;font:600 13px system-ui;z-index:50;pointer-events:none';
-    document.body.appendChild(b);
-    this.banner = b;
-  }
-
-  async HideBanner() {
-    if (this.banner) this.banner.style.display = 'none';
-  }
-
-  bannerHeight() {
-    return this.banner && this.banner.style.display !== 'none' ? 50 : 0;
-  }
-
-  async ShowAppOpen() {
-    track('ad_request', { format: 'app_open', placement: 'resume' });
-    await this.overlay('app open', 2, true);
-    track('ad_show', { format: 'app_open', placement: 'resume' });
+  rewardedSupported() {
     return true;
   }
 }

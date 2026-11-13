@@ -13,7 +13,7 @@ const B = (s: Partial<Parameters<typeof humanSvg>[0]>, top: string) =>
 
 export const gym: GameConfig = {
   id: 'gym',
-  title: { ru: 'Качалка Раш', en: 'Gym Rush', ky: 'Спортзал Раш' },
+  title: { ru: 'Gym Rush', en: 'Gym Rush', ky: 'Gym Rush' },
   tagline: { ru: 'Из дрища в качка — и арм-рестлинг с боссом!', en: 'From noodle to beast — then arm-wrestle the boss!', ky: 'Арыктан күчтүүгө — анан босс менен күрөш!' },
   unit: { ru: 'силы', en: 'power', ky: 'күч' },
   start: 10,
@@ -28,7 +28,7 @@ export const gym: GameConfig = {
     { ru: 'Гора мышц', en: 'Muscle Mountain', ky: 'Булчуң тоосу' },
     { ru: 'Титан', en: 'Titan', ky: 'Титан' },
   ],
-  hero: (tier, top) => {
+  hero: (tier, skin, pose) => {
     const p = [
       { shoulder: 26, waist: 22, arm: 8, face: 'wow' as const, headband: undefined },
       { shoulder: 34, waist: 28, arm: 12, face: 'smile' as const },
@@ -37,7 +37,7 @@ export const gym: GameConfig = {
       { shoulder: 64, waist: 36, arm: 25, biceps: 17, face: 'smug' as const, flex: true },
       { shoulder: 72, waist: 38, arm: 28, biceps: 20, face: 'smug' as const, flex: true, shades: true },
     ][tier];
-    return B(p, top);
+    return B({ ...p, pose, kind: skin.kind }, skin.color);
   },
   skins: [
     { name: { ru: 'Майка', en: 'Tank top', ky: 'Майка' }, color: '#FFB703', price: 0 },
@@ -64,5 +64,6 @@ export const gym: GameConfig = {
     en: ['The Bulldozer won. Fewer donuts', 'Your arm gave up', 'Skipped leg day'],
     ky: ['Бульдозер күчтүү. Пончикти азыраак же', 'Колуң чыдабады', 'Бут күнүн өткөрүп жибердиң'],
   },
+  music: 'music2',
   emoji: '💪',
 };

@@ -1,5 +1,6 @@
 import type { Lang } from '../engine/types';
 import { currentGame } from '../games';
+import { bridge } from '../platform/bridge';
 
 export type { Lang };
 
@@ -22,7 +23,7 @@ export interface SaveData {
   settings: { sound: boolean; haptics: boolean; lang: Lang | null };
 }
 
-const KEY = `rf.${currentGame().id}.v1`;
+const KEY = `${currentGame().id}_save`;
 
 function fresh(): SaveData {
   return {
@@ -44,32 +45,36 @@ function fresh(): SaveData {
   };
 }
 
-function load(): SaveData {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const p = JSON.parse(raw) as SaveData;
-      const b = fresh();
-      return { ...b, ...p, up: { ...b.up, ...p.up }, settings: { ...b.settings, ...p.settings } };
-    }
-  } catch {
-    /* corrupted → fresh */
-  }
-  return fresh();
+function merge(p: Partial<SaveData> | null | undefined): SaveData {
+  const b = fresh();
+  if (!p || typeof p !== 'object') return b;
+  return { ...b, ...p, up: { ...b.up, ...(p.up ?? {}) }, settings: { ...b.settings, ...(p.settings ?? {}) } };
 }
 
-let data: SaveData = load();
+let data: SaveData = fresh();
+
+/** Reads the whole save in one storage.get call before gameplay is shown (Bridge required step 4). */
+export async function loadSave(): Promise<void> {
+  const b = bridge();
+  if (!b) return;
+  try {
+    const raw = await b.storage.get([KEY], true);
+    const v = Array.isArray(raw) ? raw[0] : raw;
+    data = merge(typeof v === 'string' ? (JSON.parse(v) as SaveData) : (v as SaveData));
+  } catch {
+    data = fresh();
+  }
+}
 
 export const save = {
   get data() {
     return data;
   },
+  /** Persist through Bridge storage only; call on meaningful progress (level end, purchase, settings). */
   write() {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(data));
-    } catch {
-      /* private mode etc. */
-    }
+    const b = bridge();
+    if (!b) return;
+    void b.storage.set([KEY], [JSON.stringify(data)]).catch(() => {});
   },
   update(fn: (d: SaveData) => void) {
     fn(data);

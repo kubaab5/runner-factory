@@ -1,7 +1,12 @@
 import type { GameConfig } from '../engine/types';
 
-export const W = 720;
-export const H = 1280;
+/** Design size is 720×1280; the game EXPANDs to fill any window, so these follow the real game size. */
+export let W = 720;
+export let H = 1280;
+export function setGameSize(w: number, h: number) {
+  W = Math.round(w);
+  H = Math.round(h);
+}
 export const FONT = '"Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
 const hex = (s: string) => Number.parseInt(s.replace('#', ''), 16);

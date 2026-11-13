@@ -75,6 +75,11 @@ export class Button extends Phaser.GameObjects.Container {
     this.bg.fillStyle(0xffffff, 0.18).fillRoundedRect(-w / 2 + 6, -h / 2 + 4, w - 12, h * 0.42, Math.min(22, h / 3));
   }
 
+  setIcon(key: string) {
+    this.ico?.setTexture(key);
+    return this;
+  }
+
   setLabel(s: string) {
     this.txt.setText(s);
     return this;
