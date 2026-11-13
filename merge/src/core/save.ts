@@ -7,6 +7,8 @@ export interface SaveData {
   plays: number;
   merges: number;
   tutorial: boolean;
+  /** the jar in progress, so a reload continues the same game */
+  run: { score: number; merges: number; maxTier: number; current: number; next: number; items: number[][] } | null;
   settings: { sound: boolean; music: boolean };
 }
 
@@ -19,6 +21,7 @@ const fresh = (): SaveData => ({
   plays: 0,
   merges: 0,
   tutorial: false,
+  run: null,
   settings: { sound: true, music: true },
 });
 let data = fresh();

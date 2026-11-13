@@ -33,6 +33,27 @@ let lastKillAt = -99;
 let reviveUsed = false;
 let credited = 0;
 let lastEarned = 0;
+let bestAtStart = 0;
+let lastSaveAt = 0;
+
+/** Coins and best length are banked during the run too (every 10 s at most, and always when the page
+    is hidden), so a reload never loses them. `credited` remembers what is already in the save. */
+function persistRun(force = false) {
+  if (!player || (state !== 'play' && state !== 'dying')) return;
+  const total = Math.floor(runMax / 8) + runKills * 10;
+  const add = total - credited;
+  const len = Math.floor(runMax);
+  if (add <= 0 && len <= save.data.best) return;
+  const now = performance.now();
+  if (!force && now - lastSaveAt < 10000) return;
+  lastSaveAt = now;
+  credited = total;
+  save.update((d) => {
+    d.coins += Math.max(0, add);
+    d.best = Math.max(d.best, len);
+    d.bestKills = Math.max(d.bestKills, runKills);
+  });
+}
 let x2Used = false;
 let startBigReady = false;
 let trialSkin: number | null = null;
@@ -97,8 +118,12 @@ function wirePlatform() {
   document.addEventListener('visibilitychange', () => {
     paused = document.hidden;
     setHiddenAudio(document.hidden);
-    if (document.hidden) input.reset();
+    if (document.hidden) {
+      input.reset();
+      persistRun(true);
+    }
   });
+  window.addEventListener('pagehide', () => persistRun(true));
 }
 
 // ───────────────── simulation ─────────────────
@@ -122,6 +147,7 @@ function tick(dt: number) {
   for (const k of world.kills) onKill(k.killer, k.victim);
   if (player && player.alive) {
     runMax = Math.max(runMax, player.mass);
+    persistRun();
     const len = Math.floor(player.mass);
     while (nextMilestone < MILESTONES.length && len >= MILESTONES[nextMilestone].at) {
       const m = MILESTONES[nextMilestone++];
@@ -417,6 +443,9 @@ function startRun() {
   streak = 0;
   reviveUsed = false;
   credited = 0;
+  x2Used = false;
+  bestAtStart = save.data.best;
+  lastSaveAt = 0;
   nextMilestone = MILESTONES.findIndex((m) => m.at > player!.mass);
   if (nextMilestone < 0) nextMilestone = MILESTONES.length;
   input.reset();
@@ -461,12 +490,12 @@ function showDead() {
   const seconds = Math.round(world.time - runStart);
   const rank = world.ranking().filter((s) => s.mass > player!.mass).length + 1;
   const total = Math.floor(runMax / 8) + runKills * 10;
-  lastEarned = Math.max(0, total - credited);
+  const rest = Math.max(0, total - credited);
   credited = total;
-  x2Used = false;
-  const isBest = len > save.data.best;
+  lastEarned = total; // shown and doubled: everything this run earned, part of it banked already
+  const isBest = len > bestAtStart;
   save.update((d) => {
-    d.coins += lastEarned;
+    d.coins += rest;
     d.best = Math.max(d.best, len);
     d.bestKills = Math.max(d.bestKills, runKills);
   });
@@ -492,7 +521,7 @@ function showDead() {
   $('reviveTxt').textContent = t('revive');
   $('reviveSub').textContent = t('reviveSub');
   const x2 = $<HTMLButtonElement>('x2Btn');
-  x2.classList.toggle('hide', !rs || lastEarned === 0);
+  x2.classList.toggle('hide', !rs || lastEarned === 0 || x2Used);
   x2.disabled = false;
   $('x2Txt').textContent = `${t('x2')} (+${lastEarned})`;
   $('againBtn').textContent = t('again');

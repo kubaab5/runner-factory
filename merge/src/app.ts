@@ -28,6 +28,30 @@ let shake = 0;
 let flash = 0;
 let tutorial = !save.data.tutorial;
 const happyUntil = new Map<number, number>();
+let lastSaveAt = 0;
+let bestAtStart = 0;
+
+/** Best score and the biggest meme are progress: write them on meaningful moments, at most every 8 s
+    while playing, and always right before an ad or when the page is hidden. */
+function persistProgress(force = false) {
+  if (!sim || state !== 'play') return;
+  const now = performance.now();
+  if (!force && now - lastSaveAt < 5000) return;
+  lastSaveAt = now;
+  save.update((d) => {
+    d.best = Math.max(d.best, sim.score);
+    d.maxTier = Math.max(d.maxTier, sim.maxTier);
+    d.run = {
+      score: sim.score,
+      merges: sim.merges,
+      maxTier: sim.maxTier,
+      current,
+      next,
+      items: [...sim.items.values()].map((it) => [it.tier, Math.round(it.body.position.x), Math.round(it.body.position.y)]),
+    };
+  });
+}
+
 const perf = new PerfSampler(60);
 
 // layout (screen px)
@@ -68,7 +92,7 @@ export async function startApp() {
   await initAudio();
   wirePlatform();
   wireUi();
-  newGame();
+  newGame(true);
   $('boot').classList.add('hide');
   $('hud').classList.remove('hide');
   let last = performance.now();
@@ -112,7 +136,9 @@ function wirePlatform() {
   document.addEventListener('visibilitychange', () => {
     paused = document.hidden;
     setHiddenAudio(document.hidden);
+    if (document.hidden) persistProgress(true);
   });
+  window.addEventListener('pagehide', () => persistProgress(true));
 }
 
 function resize() {
@@ -140,10 +166,20 @@ const toWorldX = (sx: number) => (sx - ox) / scale;
 const toWorldY = (sy: number) => (sy - oy) / scale;
 
 // ───────────────── game flow ─────────────────
-function newGame() {
+function newGame(resume = false) {
   sim = new Sim();
   current = sim.rollNext();
   next = sim.rollNext();
+  const run = resume ? save.data.run : null;
+  if (run && run.items.length) {
+    for (const [tier, x, y] of run.items) if (tier >= 0 && tier <= TOP) sim.add(tier, x, y);
+    sim.score = run.score;
+    sim.merges = run.merges;
+    sim.maxTier = Math.max(sim.maxTier, run.maxTier);
+    current = run.current;
+    next = run.next;
+  }
+  bestAtStart = save.data.best;
   cooldown = 0;
   hammer = false;
   reviveUsed = false;
@@ -155,8 +191,13 @@ function newGame() {
   $('over').classList.add('hide');
   $('hud').classList.remove('hide');
   updateHud();
-  save.update((d) => d.plays++);
-  sendEvent('progression_started', { game: save.data.plays });
+  if (!run) {
+    save.update((d) => {
+      d.plays++;
+      d.run = null;
+    });
+    sendEvent('progression_started', { game: save.data.plays });
+  } else sendEvent('run_resumed', { score: sim.score, items: run.items.length });
   platformMessage('level_started');
   platformMessage('gameplay_started');
   if (tutorial) showBanner(t('hint'));
@@ -170,6 +211,7 @@ function doDrop(x: number) {
   current = next;
   next = sim.rollNext();
   cooldown = COOLDOWN;
+  persistProgress();
   play('swap', 0.5, 0.9 + Math.random() * 0.2);
   if (tutorial) {
     tutorial = false;
@@ -224,7 +266,7 @@ function onMerge(x: number, y: number, tier: number, points: number, combo: numb
     // newest item at this spot grins for a moment
     for (const it of sim.items.values()) if (it.tier === tier && sim.time - it.born < 0.05) happyUntil.set(it.id, sim.time + 0.8);
     if (tier > prevMax) {
-      save.update((s) => (s.maxTier = tier));
+      persistProgress(true);
       popup(`${t('unlocked')} ${getLang() === 'ru' ? d.ru : d.name}!`, true);
       play('tierup', 0.7);
       flash = 0.6;
@@ -236,6 +278,7 @@ function onMerge(x: number, y: number, tier: number, points: number, combo: numb
     play('coin', 0.5, 1 + combo * 0.05);
   }
   floats.push({ x, y, text: '+' + points, born: performance.now() / 1000, col: combo >= 3 ? '#ffd23b' : '#ffffff' });
+  persistProgress();
   updateHud();
 }
 
@@ -255,10 +298,12 @@ function gameOver() {
   platformMessage('gameplay_stopped');
   platformMessage('level_failed');
   perf.flush();
-  const isBest = sim.score > save.data.best;
+  const isBest = sim.score > bestAtStart;
   save.update((d) => {
     d.best = Math.max(d.best, sim.score);
+    d.maxTier = Math.max(d.maxTier, sim.maxTier);
     d.merges += sim.merges;
+    d.run = null;
   });
   sendEvent('progression_failed', {
     game: save.data.plays,
@@ -364,6 +409,7 @@ function wireUi() {
       return;
     }
     if (sim.items.size === 0) return;
+    persistProgress(true);
     if (!(await showRewarded('hammer'))) return void popup(t('noAd'));
     hammer = true;
     $('hammerBtn').classList.add('on');
@@ -371,6 +417,7 @@ function wireUi() {
   };
   $('shakeBtn').onclick = async () => {
     if (state !== 'play' || sim.items.size === 0) return;
+    persistProgress(true);
     if (!(await showRewarded('shake'))) return void popup(t('noAd'));
     sim.shake();
     shake = 16;
@@ -383,6 +430,7 @@ function wireUi() {
     else b.disabled = false;
   };
   $('againBtn').onclick = () => {
+    persistProgress(true);
     interstitialAtPause();
     newGame();
   };
