@@ -3,7 +3,7 @@ import { bridge } from './bridge';
 /* Game-local telemetry adapter (Playgama telemetry guide): bounded event names, values in data,
    one aggregated performance_sample about every 30 s of visible gameplay. */
 
-export const GAME_VERSION = '1.0.3';
+export const GAME_VERSION = '1.0.4';
 type Data = Record<string, string | number | boolean>;
 
 export function sendEvent(name: string, data?: Data) {

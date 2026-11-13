@@ -18,6 +18,11 @@ export interface BridgeApi {
     on(ev: string, cb: (state: string) => void): void;
     off?(ev: string, cb: (state: string) => void): void;
   };
+  player?: {
+    isAuthorizationSupported: boolean;
+    isAuthorized: boolean;
+    authorize(options?: unknown): Promise<void>;
+  };
   storage: {
     get(key: string | string[], tryParseJson?: boolean): Promise<unknown>;
     set(key: string | string[], value: unknown): Promise<void>;

@@ -1,6 +1,6 @@
 import { interstitialAtPause, rewardedSupported, showRewarded } from './ads';
 import { initAudio, play, refreshAudio, setHiddenAudio, setPausedAudio, setPlatformAudio } from './audio';
-import { save } from './core/save';
+import { canSignIn, save, signIn } from './core/save';
 import { Input } from './game/input';
 import { Renderer, type Cam } from './game/render';
 import { FOOD_COLORS, HATS, MEME_FOODS, SKINS } from './game/skins';
@@ -353,6 +353,10 @@ function wireUi() {
     }
   };
   $('shopBtn').onclick = () => openShop();
+  $('signBtn').onclick = async () => {
+    if (await signIn()) play('good', 0.6);
+    refreshMenu();
+  };
   $('shopBack').onclick = () => showMenu();
   $('tabSkins').onclick = () => ((shopTab = 'skins'), renderShop());
   $('tabHats').onclick = () => ((shopTab = 'hats'), renderShop());
@@ -413,6 +417,9 @@ function refreshMenu() {
   $('coinTxt').textContent = String(save.data.coins);
   const touch = matchMedia('(pointer: coarse)').matches;
   $('hint').textContent = touch ? t('hintTouch') : t('hint');
+  // optional platform sign-in: offered, never forced, hidden once signed in
+  $('signBtn').textContent = t('signIn');
+  $('signBtn').classList.toggle('hide', !canSignIn());
 }
 
 function showMenu() {

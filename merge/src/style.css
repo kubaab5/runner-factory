@@ -76,3 +76,8 @@ button:active { transform: scale(0.95); }
 #pauseBtn { position: fixed; right: 10px; top: max(10px, env(safe-area-inset-top)); width: 42px; height: 42px; border-radius: 50%; background: rgba(20, 10, 45, 0.6); color: #fff; padding: 9px; z-index: 5; }
 #pauseBtn svg { width: 100%; height: 100%; }
 .sec2 { width: 100%; padding: 11px; border-radius: 16px; font-size: 19px; background: #4a3590; box-shadow: 0 5px 0 #2c1f5a; }
+#signBtn { position: fixed; right: 10px; top: calc(max(10px, env(safe-area-inset-top)) + 50px); height: 42px; border-radius: 21px; background: rgba(20, 10, 45, 0.6); color: #fff; padding: 0 12px 0 9px; z-index: 5; display: inline-flex; align-items: center; gap: 5px; font-size: 14px; }
+#signBtn svg { width: 20px; height: 20px; }
+@media (max-height: 559px) and (min-aspect-ratio: 6/5) {
+  #signBtn { top: auto; bottom: max(8px, env(safe-area-inset-bottom)); height: 34px; font-size: 12px; }
+}

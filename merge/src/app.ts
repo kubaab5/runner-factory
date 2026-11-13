@@ -1,6 +1,6 @@
 import { interstitialAtPause, lastAdOpened, rewardedSupported, showRewarded } from './ads';
 import { initAudio, play, refreshAudio, setHiddenAudio, setPausedAudio, setPlatformAudio } from './audio';
-import { save } from './core/save';
+import { canSignIn, save, signIn } from './core/save';
 import { DANGER_Y, DROP_Y, JAR_H, JAR_W, RADII, Sim, TOP, type Item } from './game/sim';
 import { TIERS, drawMeme, type FaceState } from './game/tiers';
 import { getLang, t, titleFor } from './i18n';
@@ -96,6 +96,7 @@ export async function startApp() {
   $('boot').classList.add('hide');
   $('hud').classList.remove('hide');
   $('pauseBtn').classList.remove('hide');
+  updateSignIn();
   let last = performance.now();
   let acc = 0;
   let readySent = false;
@@ -384,7 +385,7 @@ function wireUi() {
     doDrop(toWorldX(e.clientX));
   });
   window.addEventListener('keydown', (e) => {
-    if (e.code === 'Escape' || e.code === 'KeyP') {
+    if (e.code === 'KeyP') {
       if (state === 'play') $('pauseBtn').click();
       else if (state === 'paused') $('resumeBtn').click();
       return;
@@ -439,11 +440,21 @@ function wireUi() {
     $('pauseT').textContent = t('paused');
     $('resumeBtn').textContent = t('resume');
     $('restartBtn').textContent = t('restart');
+    updateSignIn();
     $('pauseScr').classList.remove('hide');
     $('hud').classList.add('hide');
     platformMessage('gameplay_stopped');
     interstitialAtPause();
   };
+  const doSignIn = async () => {
+    if (await signIn()) {
+      play('good', 0.6);
+      updateHud();
+    }
+    updateSignIn();
+  };
+  $('signBtn').onclick = doSignIn;
+  $('signBtn2').onclick = doSignIn;
   $('resumeBtn').onclick = () => {
     if (state !== 'paused') return;
     state = 'play';
@@ -497,6 +508,15 @@ function smash(it: Item) {
   hideBanner();
   shake = 10;
   play('bad', 0.6);
+}
+
+/** Sign-in is optional and only offered where the platform supports it; hidden once signed in. */
+function updateSignIn() {
+  const can = canSignIn();
+  $('signBtn').classList.toggle('hide', !can);
+  $('signTxt').textContent = t('signIn');
+  $('signBtn2').classList.toggle('hide', !can);
+  $('signBtn2').textContent = t('signInLong');
 }
 
 function updateMute() {

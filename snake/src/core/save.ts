@@ -56,3 +56,42 @@ export const save = {
     if (b) void b.storage.set([KEY], [JSON.stringify(data)]).catch(() => {});
   },
 };
+
+/** Optional platform sign-in (never forced, rule 1.2.2). Shown only where the platform supports it. */
+export function canSignIn() {
+  const p = bridge()?.player;
+  return !!p && p.isAuthorizationSupported && !p.isAuthorized;
+}
+
+/** Sign in from a player tap. Progress made as a guest is merged into the account save, never lost. */
+export async function signIn(): Promise<boolean> {
+  const p = bridge()?.player;
+  if (!p) return false;
+  try {
+    await p.authorize();
+  } catch {
+    return false;
+  }
+  const guest = data;
+  await loadSave();
+  const acc = data;
+  data = mergeSaves(guest, acc);
+  save.update(() => {});
+  return true;
+}
+
+function mergeSaves(a: SaveData, b: SaveData): SaveData {
+  return {
+    ...b,
+    coins: Math.max(a.coins, b.coins),
+    skins: [...new Set([...a.skins, ...b.skins])],
+    hats: [...new Set([...a.hats, ...b.hats])],
+    skin: a.skin,
+    hat: a.hat,
+    name: a.name || b.name,
+    best: Math.max(a.best, b.best),
+    bestKills: Math.max(a.bestKills, b.bestKills),
+    plays: Math.max(a.plays, b.plays),
+    settings: a.settings,
+  };
+}

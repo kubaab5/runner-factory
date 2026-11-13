@@ -40,6 +40,7 @@ const S = {
     newBest: 'NEW BEST!',
     shareHint: 'Screenshot this and flex your aura',
     paused: 'Paused',
+    signIn: 'Sign in to keep progress',
   },
   ru: {
     play: 'ИГРАТЬ',
@@ -77,6 +78,7 @@ const S = {
     newBest: 'НОВЫЙ РЕКОРД!',
     shareHint: 'Сделай скрин и похвастайся аурой',
     paused: 'Пауза',
+    signIn: 'Войти, чтобы сохранить прогресс',
   },
 } as const;
 
