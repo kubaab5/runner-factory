@@ -5,6 +5,9 @@ import { setSuspended } from './audio';
 import { bridge, type BridgeApi } from './platform/bridge';
 import { sendEvent } from './platform/telemetry';
 
+/** whether the last ad actually opened: false = no fill, true + no reward = closed early */
+export let lastAdOpened = false;
+
 export type RewardedPlacement = 'revive' | 'hammer' | 'shake';
 
 function run(b: BridgeApi, eventKey: string, show: () => void, success: (s: string) => boolean): Promise<boolean> {
@@ -16,6 +19,7 @@ function run(b: BridgeApi, eventKey: string, show: () => void, success: (s: stri
     const finish = (r: boolean) => {
       if (done) return;
       done = true;
+      lastAdOpened = opened;
       b.advertisement.off?.(event, cb);
       resolve(r);
     };

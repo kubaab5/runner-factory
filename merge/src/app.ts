@@ -1,4 +1,4 @@
-import { interstitialAtPause, rewardedSupported, showRewarded } from './ads';
+import { interstitialAtPause, lastAdOpened, rewardedSupported, showRewarded } from './ads';
 import { initAudio, play, refreshAudio, setHiddenAudio, setPausedAudio, setPlatformAudio } from './audio';
 import { save } from './core/save';
 import { DANGER_Y, DROP_Y, JAR_H, JAR_W, RADII, Sim, TOP, type Item } from './game/sim';
@@ -181,7 +181,7 @@ function newGame(resume = false) {
   }
   bestAtStart = save.data.best;
   cooldown = 0;
-  hammer = false;
+  cancelHammer();
   reviveUsed = false;
   parts = [];
   floats = [];
@@ -291,6 +291,7 @@ function burst(x: number, y: number, col: string, n: number, power: number) {
 }
 
 function gameOver() {
+  cancelHammer();
   state = 'over';
   overAt = performance.now();
   play('fail', 0.7);
@@ -402,23 +403,19 @@ function wireUi() {
   $('shakeTxt').textContent = t('shake');
   $('hammerBtn').onclick = async () => {
     if (state !== 'play') return;
-    if (hammer) {
-      hammer = false;
-      $('hammerBtn').classList.remove('on');
-      hideBanner();
-      return;
-    }
+    if (hammer) return cancelHammer();
     if (sim.items.size === 0) return;
     persistProgress(true);
-    if (!(await showRewarded('hammer'))) return void popup(t('noAd'));
+    if (!(await showRewarded('hammer'))) return void popup(lastAdOpened ? t('adClosed') : t('noAd'));
     hammer = true;
     $('hammerBtn').classList.add('on');
     showBanner(t('hammerPick'));
   };
   $('shakeBtn').onclick = async () => {
     if (state !== 'play' || sim.items.size === 0) return;
+    cancelHammer();
     persistProgress(true);
-    if (!(await showRewarded('shake'))) return void popup(t('noAd'));
+    if (!(await showRewarded('shake'))) return void popup(lastAdOpened ? t('adClosed') : t('noAd'));
     sim.shake();
     shake = 16;
     play('whoosh', 0.7);
@@ -427,13 +424,24 @@ function wireUi() {
     const b = $<HTMLButtonElement>('reviveBtn');
     b.disabled = true;
     if (await showRewarded('revive')) revive();
-    else b.disabled = false;
+    else {
+      b.disabled = false;
+      $('reviveSub').textContent = lastAdOpened ? t('adClosed') : t('noAd');
+    }
   };
   $('againBtn').onclick = () => {
     persistProgress(true);
     interstitialAtPause();
     newGame();
   };
+}
+
+/** Hammer mode lasts for one smash; it never carries over to another ad or a new game. */
+function cancelHammer() {
+  if (!hammer) return;
+  hammer = false;
+  $('hammerBtn').classList.remove('on');
+  hideBanner();
 }
 
 function smash(it: Item) {
